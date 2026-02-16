@@ -1,13 +1,13 @@
 import cors from "cors";
 import express, { Request, Response } from "express";
-import useAuthRouter from "./routes/auth"
+import router from "./api/auth"
 
 
 const app = express();
 
 app.use(express.json());
 app.use(cors({
-    origin: "*",
+    origin: "http://localhost:3000",
     credentials: true
 }))
 
@@ -15,9 +15,9 @@ app.get("/", (req: Request, res: Response) => {
     res.json({ status: "ok" });
 });
 
-app.use("/api/auth", useAuthRouter);
+app.use("/api/auth", router);
 
-const PORT = 3000;
+const PORT = 3001;
 
 app.listen(PORT, () => {
     console.log(`Server running on http://localhost:${PORT}`);
