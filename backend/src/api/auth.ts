@@ -1,4 +1,5 @@
 import express, { Request, Response } from "express";
+import request from "express";
 import { hashPass } from "../utils/hashPass";
 import { comparePass } from "../utils/comparePass"
 import prisma from "../db";
@@ -20,27 +21,6 @@ interface LoginBody {
 }
 
 const router = express.Router();
-// const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key";
-
-
-// // Middleware для проверки аутентификации
-// const authenticateToken = (req: Request, res: Response, next: Function) => {
-//     const authHeader = req.headers['authorization'];
-//     const token = authHeader && authHeader.split(' ')[1];
-
-//     if (!token) {
-//         return res.status(401).json({ error: "Access token required" });
-//     }
-
-//     jwt.verify(token, JWT_SECRET, (err: any, user: any) => {
-//         if (err) {
-//             return res.status(403).json({ error: "Invalid token" });
-//         }
-//         (req as any).user = user;
-//         next();
-//     });
-// };
-
 
 router.post("/login", async (req: Request, res: Response) => {
     try {
@@ -78,7 +58,7 @@ router.post("/login", async (req: Request, res: Response) => {
             { expiresIn: '7d' }
         );
 
-        res.cookie('token', token, {
+        res.cookie('ref_token', token, {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
             maxAge: 7 * 24 * 60 * 60 * 1000
@@ -97,12 +77,15 @@ router.post("/login", async (req: Request, res: Response) => {
         res.status(500).json({ error: "Internal server error" });
     }
 });
+
 router.post(
     "/logout",
     authenticateToken,
-    async function (req: Request<{}, {}, LoginBody>, res: Response) {
+    async function (req: Request, res: Response) {
+        
         try {
-            res.clearCookie('token');
+            console.log("logout");
+            res.clearCookie('ref_token');
 
             return res.status(200).json({
                 message: 'Logout successful'
@@ -123,7 +106,7 @@ router.post(
             if (!email || !password || !username)
                 throw new Error("Email or password error");
 
-            const newUser =createUser({email, password, username})
+            const newUser = await createUser({email, password, username})
 
             if (!newUser) throw new Error("server error on user create")
             return res.status(200).json({ text: newUser });
@@ -133,6 +116,49 @@ router.post(
     },
 );
 
-// router.post("/me")
+import type { User } from "@prisma/client";
+import type { UserCode } from "../types/user";
+router.get(
+    "/me",
+    authenticateToken,
+    async function (req: Request & {user?: UserCode} , res: Response) {
+        // Изменить usercode на тип данных user но без пароля
+        try {
+            if (!req.user) return
+            const userId = req.user.userId;
+            
+            if (!userId) {
+                return res.status(401).json({ error: "Not authenticated" });
+            }
+
+            const user = await prisma.user.findUnique({
+                where: { id: +userId },
+                include: {
+                    posts: {
+                        select: {
+                            id: true,
+                            title: true,
+                            createdAt: true
+                        }
+                    }
+                }
+            });
+
+            if (!user) {
+                return res.status(404).json({ error: "User not found" });
+            }
+
+            const { password: _, ...userWithoutPassword } = user;
+            
+            res.json({
+                user: userWithoutPassword
+            });
+            
+        } catch (e) {
+            console.error("/me error:", e);
+            return res.status(500).json({ error: "Internal server error" });
+        }
+    },
+);
 
 export default router

@@ -7,7 +7,6 @@ generator client {
     provider = "prisma-client-js"
 }
 
-// Добавьте эти модели:
 model User {
     id        Int      @id @default(autoincrement())
     username  String   @unique
