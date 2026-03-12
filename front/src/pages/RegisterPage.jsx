@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import useAuthStore from '../store/authStore';
 import './AuthPages.css';
+import { BASEURL } from '../api';
 
 const RegisterPage = () => {
   const [formData, setFormData] = useState({
@@ -35,23 +36,34 @@ const RegisterPage = () => {
     }
 
     try {
-      // В реальном приложении здесь был бы запрос к серверу
-      // Для демо создаем фиктивного пользователя
-      const fakeToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MiwidXNlcm5hbWUiOiJ1c2VyMiIsImVtYWlsIjoiZW1haWxAZXhhbXBsZS5jb20iLCJpYXQiOjE1MTYyMzkwMjJ9.7q1M7gZgQYQKJh8bq7p7q7p7q7p7q7p7q7p7q7p7q7';
-      
-      login(
-        { 
-          id: 2, 
-          username: formData.username, 
-          email: formData.email 
+      const response = await fetch(BASEURL + '/api/auth/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
         },
-        fakeToken
-      );
-      
-      navigate('/');
+        body: JSON.stringify({
+          username: formData.username,
+          email: formData.email,
+          password: formData.password
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Ошибка при регистрации');
+      }
+
+      if (data.user) {
+        const token = data.token || 'temp-token';
+        
+        login(data.user, token);
+        navigate('/');
+      }
       
     } catch (err) {
-      setError('Ошибка при регистрации');
+      console.error('Registration error:', err);
+      setError(err.message || 'Ошибка при регистрации');
     } finally {
       setIsLoading(false);
     }
@@ -62,7 +74,7 @@ const RegisterPage = () => {
       <div className="auth-container">
         <div className="auth-card">
           <div className="auth-header">
-            <h1>📝 Регистрация</h1>
+            <h1>Регистрация</h1>
             <p>Создайте новый аккаунт</p>
           </div>
 

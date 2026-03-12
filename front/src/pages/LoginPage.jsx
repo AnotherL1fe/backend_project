@@ -2,11 +2,12 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import useAuthStore from '../store/authStore';
 import './AuthPages.css';
+import { BASEURL } from '../api';
 
 const LoginPage = () => {
   const [formData, setFormData] = useState({
-    email: 'user@example.com',
-    password: 'password123'
+    email: '',
+    password: ''
   });
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -19,24 +20,38 @@ const LoginPage = () => {
     setIsLoading(true);
     setError('');
 
+console.log('BASEURL:', BASEURL);
+console.log('Full URL:', BASEURL + "/api/auth/login");
+
     try {
-      // В реальном приложении здесь был бы запрос к серверу
-      // Для демо используем фиктивные данные
-      if (formData.email === 'user@example.com' && formData.password === 'password123') {
-        // Фиктивный токен
-        const fakeToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwidXNlcm5hbWUiOiJ1c2VyIiwiZW1haWwiOiJ1c2VyQGV4YW1wbGUuY29tIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c';
-        
-        login(
-          { id: 1, username: 'user', email: formData.email },
-          fakeToken
-        );
-        
+      const response = await fetch(BASEURL + "/api/auth/login", {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: formData.email,
+          password: formData.password
+        }),
+        credentials: 'include'
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Ошибка при входе');
+      }
+
+      if (data.user && data.token) {
+        login(data.user, data.token);
         navigate('/');
       } else {
-        setError('Неверный email или пароль');
+        throw new Error('Неверный ответ от сервера');
       }
+      
     } catch (err) {
-      setError('Ошибка при входе');
+      console.error('Login error:', err);
+      setError(err.message || 'Ошибка при входе');
     } finally {
       setIsLoading(false);
     }
@@ -47,7 +62,7 @@ const LoginPage = () => {
       <div className="auth-container">
         <div className="auth-card">
           <div className="auth-header">
-            <h1>🔐 Вход в систему</h1>
+            <h1>Вход в систему</h1>
             <p>Войдите, чтобы получить доступ к данным</p>
           </div>
 
@@ -92,12 +107,6 @@ const LoginPage = () => {
               </p>
             </div>
           </form>
-
-          <div className="auth-footer">
-            <p><strong>Демо данные:</strong></p>
-            <p>Email: <code>user@example.com</code></p>
-            <p>Пароль: <code>password123</code></p>
-          </div>
         </div>
       </div>
     </div>

@@ -16,7 +16,7 @@ const LoginForm = ({ onLogin, isLoading, error, switchToRegister }) => {
   return (
     <div className="auth-container">
       <div className="auth-card">
-        <h2 className="auth-title">🔐 Вход в систему</h2>
+        <h2 className="auth-title">Вход в систему</h2>
         
         {error && (
           <div className="auth-error">
@@ -70,12 +70,6 @@ const LoginForm = ({ onLogin, isLoading, error, switchToRegister }) => {
             </button>
           </div>
         </form>
-        
-        <div className="auth-footer">
-          <p>Демо данные:</p>
-          <p>Email: <strong>user@example.com</strong></p>
-          <p>Пароль: <strong>password123</strong></p>
-        </div>
       </div>
     </div>
   );

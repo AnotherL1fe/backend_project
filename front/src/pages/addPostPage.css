@@ -76,13 +76,19 @@
 .submit-btn {
   flex: 2;
   padding: 12px 20px;
-  background: #2ecc71;
+  background: #000000;
   color: white;
   border: none;
   border-radius: 6px;
   font-size: 16px;
   cursor: pointer;
 }
+
+.submit-btn:focus {
+  outline: none;
+  border-color: #3f3e3e;
+}
+
 
 .submit-btn:disabled {
   background: #95a5a6;

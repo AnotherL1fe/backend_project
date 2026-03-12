@@ -1,48 +1,94 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 
+const getTokenFromCookie = () => {
+  const cookies = document.cookie.split(';');
+  for (let cookie of cookies) {
+    const [name, value] = cookie.trim().split('=');
+    if (name === 'ref_token') {
+      return value;
+    }
+  }
+  return null;
+};
+
+const removeTokenCookie = () => {
+  document.cookie = 'ref_token=; Max-Age=-99999999; path=/;';
+};
+
 const useAuthStore = create(
   persist(
     (set, get) => ({
-      // Состояние
       user: null,
       token: null,
       isAuthenticated: false,
       isLoading: true,
-      
-      // Действия
+
       login: (userData, token) => {
-        // Сохраняем токен в localStorage
-        localStorage.setItem('auth_token', token);
-        
-        set({ 
-          user: userData, 
-          token, 
+        set({
+          user: userData,
+          token,
           isAuthenticated: true,
-          isLoading: false 
+          isLoading: false
         });
       },
-      
+
+      register: (userData, token) => {
+        set({
+          user: userData,
+          token,
+          isAuthenticated: true,
+          isLoading: false
+        });
+      },
+
       logout: () => {
-        // Удаляем токен из localStorage
-        localStorage.removeItem('auth_token');
+        removeTokenCookie();
         
-        set({ 
-          user: null, 
-          token: null, 
+        set({
+          user: null,
+          token: null,
           isAuthenticated: false,
-          isLoading: false 
+          isLoading: false
         });
       },
-      
+
       setLoading: (loading) => set({ isLoading: loading }),
-      
-      // Проверка аутентификации при загрузке
-      checkAuth: () => {
-        const token = localStorage.getItem('auth_token');
+
+      checkAuth: async () => {
+        const token = getTokenFromCookie();
+        
         if (token) {
-          // Можно добавить проверку токена с сервером
-          set({ token, isAuthenticated: true, isLoading: false });
+          try {
+            const response = await fetch('http://localhost:3001/api/auth/me', {
+              method: 'GET',
+              credentials: 'include',
+              headers: {
+                'Content-Type': 'application/json',
+              }
+            });
+
+            if (response.ok) {
+              const data = await response.json();
+              set({ 
+                user: data.user, 
+                token, 
+                isAuthenticated: true,
+                isLoading: false 
+              });
+            } else {
+              removeTokenCookie();
+              set({ 
+                user: null, 
+                token: null, 
+                isAuthenticated: false,
+                isLoading: false 
+              });
+            }
+          } catch (error) {
+            console.error('Auth check error:', error);
+            set({ isLoading: false });
+          }
         } else {
           set({ isLoading: false });
         }
@@ -51,11 +97,13 @@ const useAuthStore = create(
     {
       name: 'auth-store',
       storage: createJSONStorage(() => localStorage),
+      partialize: (state) => ({ 
+        user: state.user
+      }),
     }
   )
 );
 
-// Проверяем аутентификацию при загрузке
 useAuthStore.getState().checkAuth();
 
 export default useAuthStore;

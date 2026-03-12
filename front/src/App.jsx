@@ -79,21 +79,33 @@ const AppContent = () => {
                         <button
                             className="cache-manager-toggle"
                             onClick={() => setShowCacheManager(!showCacheManager)}
-                            title={`${storageInfo.usagePercent || 0}% использовано`}
+                            title={`${storageInfo.usePercent || 0}% использовать`}
                         >
-                            {showCacheManager ? '❌' : '💾'}
+                            {showCacheManager ? 'X' : ''}
                             {isHovering && (
                                 <span className="cache-tooltip">
                                     {showCacheManager ? 'Скрыть кеш' : 'Показать кеш'}
                                     <br />
-                                    <small>{storageInfo.usagePercent || 0}% использовано</small>
+                                    <small>{storageInfo.usePercent || 0}% использовано</small>
                                 </span>
                             )}
                             {user && (
                                 <div className="user-info-header">
-                                    <button onClick={logout} className="logout-btn">
-                                        →]
-                                    </button>
+                                    <div
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            fetch("/logout", {
+                                                method: "POST",
+                                                credentials: "include"
+                                            })
+                                            logout();
+                                        }}
+                                        className="logout-btn"
+                                        role="button"
+                                        tabIndex={0}
+                                    >
+                                        → ]
+                                    </div>
                                 </div>
                             )}
                         </button>

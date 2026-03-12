@@ -43,7 +43,7 @@ const AddPostPage = () => {
             <Link to="/" className="back-link">← На главную</Link>
 
             <div className="add-post-container">
-                <h1>📝 Добавить новый пост</h1>
+                <h1>Добавить новый пост</h1>
 
                 <form onSubmit={handleSubmit} className="add-post-form">
                     <div className="form-group">

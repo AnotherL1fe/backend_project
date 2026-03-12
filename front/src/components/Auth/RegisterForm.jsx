@@ -46,7 +46,7 @@ const RegisterForm = ({ onRegister, isLoading, error, switchToLogin }) => {
   return (
     <div className="auth-container">
       <div className="auth-card">
-        <h2 className="auth-title">📝 Регистрация</h2>
+        <h2 className="auth-title">Регистрация</h2>
         
         {error && (
           <div className="auth-error">
