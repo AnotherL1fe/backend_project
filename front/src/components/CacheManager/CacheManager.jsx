@@ -111,12 +111,6 @@ const CacheManager = () => {
         </button>
       </div>
 
-      <div className="cache-info">
-        <small>
-          Данные автоматически сохраняются в localStorage.
-          При повторном посещении данные загружаются из кеша.
-        </small>
-      </div>
     </div>
   );
 };
