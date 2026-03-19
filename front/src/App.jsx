@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Layout from './components/Layout/Layout';
 import HomePage from './pages/HomePage';
@@ -11,10 +11,13 @@ import RegisterPage from './pages/RegisterPage';
 import useAuthStore from './store/authStore';
 import './App.css';
 
+const API_URL = 'http://localhost:3001';
+
 // Компонент для защиты маршрутов
 const ProtectedRoute = ({ children }) => {
     const { isAuthenticated, isLoading } = useAuthStore();
 
+    
     if (isLoading) {
         return (
             <div style={{
@@ -59,6 +62,28 @@ const PublicRoute = ({ children }) => {
     return children;
 };
 
+// Компонент кнопки логаута
+const LogoutButton = ({ onLogout }) => {
+    return (
+        <button
+            onClick={onLogout}
+            className="logout-btn"
+            style={{
+                padding: '8px 16px',
+                backgroundColor: '#f44336',
+                color: 'white',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: 'pointer',
+                fontSize: '14px',
+                marginLeft: '10px'
+            }}
+        >
+            Выйти
+        </button>
+    );
+};
+
 // Главный компонент с защищенными маршрутами
 const AppContent = () => {
     const [isHovering, setIsHovering] = useState(false);
@@ -66,8 +91,25 @@ const AppContent = () => {
     const storageInfo = useStorageMonitor();
     const { user, logout } = useAuthStore();
 
+    const handleLogout = async () => {
+        try {
+            // Отправляем запрос на бэкенд для очистки куки
+            await fetch(`${API_URL}/api/auth/logout`, {
+                method: 'POST',
+                credentials: 'include'
+            });
+            
+            // Очищаем состояние в store
+            logout();
+        } catch (error) {
+            console.error('Logout error:', error);
+            // Даже если запрос не удался, очищаем локальное состояние
+            logout();
+        }
+    };
+
     return (
-        <Layout>
+        <Layout user={user} onLogout={handleLogout}>
             <div className="app-container">
                 {/* Кнопка для показа/скрытия менеджера кеша */}
                 <div className="cache-toggle">
@@ -81,7 +123,7 @@ const AppContent = () => {
                             onClick={() => setShowCacheManager(!showCacheManager)}
                             title={`${storageInfo.usePercent || 0}% использовать`}
                         >
-                            {showCacheManager ? 'X' : ''}
+                            {showCacheManager ? '✕' : '⚙️'}
                             {isHovering && (
                                 <span className="cache-tooltip">
                                     {showCacheManager ? 'Скрыть кеш' : 'Показать кеш'}
@@ -89,34 +131,38 @@ const AppContent = () => {
                                     <small>{storageInfo.usePercent || 0}% использовано</small>
                                 </span>
                             )}
-                            {user && (
-                                <div className="user-info-header">
-                                    <div
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            fetch("/logout", {
-                                                method: "POST",
-                                                credentials: "include"
-                                            })
-                                            logout();
-                                        }}
-                                        className="logout-btn"
-                                        role="button"
-                                        tabIndex={0}
-                                    >
-                                        → ]
-                                    </div>
-                                </div>
-                            )}
                         </button>
                     </div>
                 </div>
 
                 {showCacheManager && <CacheManager />}
 
+                {/* Информация о пользователе и кнопка выхода */}
+                {user && (
+                    <div className="user-info-bar" style={{
+                        top: '10px',
+                        right: '20px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '10px',
+                        backgroundColor: 'white',
+                        padding: '8px 16px 8px 16px',
+                        borderRadius: '8px',
+                        boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                        marginBottom: "50px"
+                    }}>
+                        <div>
+                        <span style={{ color: '#666' }}>
+                            Вы вошли как: <strong>{user.username}</strong>
+                        </span>
+                        </div>
+                        <LogoutButton onLogout={handleLogout} />
+                    </div>
+                )}
+
                 <Routes>
                     <Route path="/" element={<HomePage />} />
-                    <Route path="/user/:id/*" element={<UserDetailPage />} /> {/* Добавлено /* */}
+                    <Route path="/user/:id/*" element={<UserDetailPage />} />
                     <Route path="/add-post" element={<AddPostPage />} />
                 </Routes>
             </div>
@@ -125,6 +171,13 @@ const AppContent = () => {
 };
 
 function App() {
+    // Проверяем аутентификацию при загрузке
+    const { checkAuth } = useAuthStore();
+
+    useEffect(() => {
+        checkAuth();
+    }, [checkAuth]);
+
     return (
         <Router>
             <Routes>
@@ -142,14 +195,11 @@ function App() {
                 } />
 
                 {/* Защищенные маршруты */}
-                <Route path="/*" element={ // Изменено с "/" на "/*"
+                <Route path="/*" element={
                     <ProtectedRoute>
                         <AppContent />
                     </ProtectedRoute>
                 } />
-
-                {/* Редирект для несуществующих маршрутов */}
-                <Route path="*" element={<Navigate to="/login" replace />} />
             </Routes>
         </Router>
     );

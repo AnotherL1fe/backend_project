@@ -4,10 +4,11 @@ import axios from 'axios';
 import './addPostPage.css';
 import useDataStore from '../store/dataStore';
 
+const BASEURL = 'http://localhost:3001';
+
 const AddPostPage = () => {
     const navigate = useNavigate();
     const [post, setPost] = useState({
-        userId: '',
         title: '',
         body: ''
     });
@@ -18,7 +19,9 @@ const AddPostPage = () => {
         setSubmitting(true);
 
         try {
-            const response = await axios.post('http://localhost:5000/api/posts', post);
+            const response = await axios.post(`${BASEURL}/api/posts`, post, {
+        withCredentials: true,
+      },);
 
             if (response.data.success) {
                 alert('✅ Пост успешно добавлен!');
@@ -46,18 +49,6 @@ const AddPostPage = () => {
                 <h1>Добавить новый пост</h1>
 
                 <form onSubmit={handleSubmit} className="add-post-form">
-                    <div className="form-group">
-                        <label className="form-label">ID пользователя</label>
-                        <input
-                            type="number"
-                            value={post.userId}
-                            onChange={(e) => setPost({ ...post, userId: e.target.value })}
-                            placeholder="Введите ID пользователя"
-                            className="form-input"
-                            required
-                        />
-                    </div>
-
                     <div className="form-group">
                         <label className="form-label">Заголовок</label>
                         <input

@@ -22,6 +22,10 @@ interface LoginBody {
 
 const router = express.Router();
 
+interface AuthRequest extends Request {
+    user?:User;
+}
+
 router.post("/login", async (req: Request, res: Response) => {
     try {
         console.log("login");
@@ -85,7 +89,11 @@ router.post(
         
         try {
             console.log("logout");
-            res.clearCookie('ref_token');
+            res.clearCookie('ref_token', {
+                httpOnly: true,
+                secure: process.env.NODE_ENV === 'production',
+                path: "/",
+            });
 
             return res.status(200).json({
                 message: 'Logout successful'
@@ -117,39 +125,22 @@ router.post(
 );
 
 import type { User } from "@prisma/client";
-import type { UserCode } from "../types/user";
+import type { MeResponse, UserCode, UserResponce } from "../types/user";
+import { SafeUserDto } from "../dto/userResponce";
 router.get(
     "/me",
     authenticateToken,
-    async function (req: Request & {user?: UserCode} , res: Response) {
+    async function (req: AuthRequest, res: Response<MeResponse | { error: string }>) {
         // Изменить usercode на тип данных user но без пароля
         try {
             if (!req.user) return
-            const userId = req.user.userId;
+          
+
             
-            if (!userId) {
-                return res.status(401).json({ error: "Not authenticated" });
-            }
 
-            const user = await prisma.user.findUnique({
-                where: { id: +userId },
-                include: {
-                    posts: {
-                        select: {
-                            id: true,
-                            title: true,
-                            createdAt: true
-                        }
-                    }
-                }
-            });
+        
 
-            if (!user) {
-                return res.status(404).json({ error: "User not found" });
-            }
-
-            const { password: _, ...userWithoutPassword } = user;
-            
+            const userWithoutPassword = new SafeUserDto(req.user);
             res.json({
                 user: userWithoutPassword
             });

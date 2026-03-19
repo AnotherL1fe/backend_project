@@ -1,6 +1,7 @@
 import cors from "cors";
 import express, { Request, Response } from "express";
-import router from "./api/auth"
+import routerAuth from "./api/auth"
+import routerPosts from "./api/posts"
 import cookieParser from "cookie-parser";
 
 const app = express();
@@ -16,7 +17,8 @@ app.get("/", (req: Request, res: Response) => {
     res.json({ status: "ok" });
 });
 
-app.use("/api/auth", router);
+app.use("/api/auth", routerAuth);
+app.use("/api/posts", routerPosts)
 
 const PORT = 3001;
 

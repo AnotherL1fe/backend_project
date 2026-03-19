@@ -5,6 +5,10 @@ import prisma from "../db";
 import { User } from "@prisma/client";
 export const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key";
 
+export interface AuthRequest extends Request {
+    user?: User;
+}
+
 const authenticateToken = (req: Request, res: Response, next: Function) => {
     const cookieToken = req.cookies?.ref_token;
     const authHeader = req.headers['authorization'];
@@ -27,6 +31,8 @@ const authenticateToken = (req: Request, res: Response, next: Function) => {
         });
         if (!requairedUser) return  res.status(403).json({ error: "Invalid or expired token" });      
 // преобразовать requairedUser и убрать пароль
+        // const { password, ...userWithoutPassword = requairedUser;
+
         (req as Request & {user: User}).user = requairedUser ;
         next();
     });

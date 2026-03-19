@@ -20,14 +20,12 @@ const useAuthStore = create(
   persist(
     (set, get) => ({
       user: null,
-      token: null,
       isAuthenticated: false,
       isLoading: true,
 
       login: (userData, token) => {
         set({
           user: userData,
-          token,
           isAuthenticated: true,
           isLoading: false
         });
@@ -36,7 +34,6 @@ const useAuthStore = create(
       register: (userData, token) => {
         set({
           user: userData,
-          token,
           isAuthenticated: true,
           isLoading: false
         });
@@ -47,7 +44,6 @@ const useAuthStore = create(
         
         set({
           user: null,
-          token: null,
           isAuthenticated: false,
           isLoading: false
         });
@@ -56,9 +52,7 @@ const useAuthStore = create(
       setLoading: (loading) => set({ isLoading: loading }),
 
       checkAuth: async () => {
-        const token = getTokenFromCookie();
         
-        if (token) {
           try {
             const response = await fetch('http://localhost:3001/api/auth/me', {
               method: 'GET',
@@ -71,16 +65,15 @@ const useAuthStore = create(
             if (response.ok) {
               const data = await response.json();
               set({ 
-                user: data.user, 
-                token, 
+                user: data.user,
                 isAuthenticated: true,
                 isLoading: false 
               });
+              console.log(21431);
+              
             } else {
-              removeTokenCookie();
               set({ 
                 user: null, 
-                token: null, 
                 isAuthenticated: false,
                 isLoading: false 
               });
@@ -89,9 +82,6 @@ const useAuthStore = create(
             console.error('Auth check error:', error);
             set({ isLoading: false });
           }
-        } else {
-          set({ isLoading: false });
-        }
       }
     }),
     {
