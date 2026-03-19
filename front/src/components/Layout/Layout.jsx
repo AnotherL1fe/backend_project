@@ -14,7 +14,10 @@ const Layout = ({ children, user, onLogout }) => {
       <footer className="app-footer">
         <div className="container">
           <p>Data Visualizer © 2024</p>
-          {user && <p>Вы вошли как: {user.username}</p>}
+          {/* ✅ Проверяем наличие user и отображаем имя */}
+          {user && user.username && (
+            <p>Вы вошли как: {user.username}</p>
+          )}
         </div>
       </footer>
     </div>

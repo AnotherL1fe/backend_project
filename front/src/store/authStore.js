@@ -52,7 +52,13 @@ const useAuthStore = create(
       setLoading: (loading) => set({ isLoading: loading }),
 
       checkAuth: async () => {
+<<<<<<< HEAD
         
+=======
+        // const token = getTokenFromCookie();
+        
+        // if (token) {
+>>>>>>> 02f4630a63357cf40a04cd0c970dbb47c7bb37a7
           try {
             const response = await fetch('http://localhost:3001/api/auth/me', {
               method: 'GET',
@@ -65,13 +71,21 @@ const useAuthStore = create(
             if (response.ok) {
               const data = await response.json();
               set({ 
+<<<<<<< HEAD
                 user: data.user,
+=======
+                user: data.user, 
+>>>>>>> 02f4630a63357cf40a04cd0c970dbb47c7bb37a7
                 isAuthenticated: true,
                 isLoading: false 
               });
               console.log(21431);
               
             } else {
+<<<<<<< HEAD
+=======
+              // removeTokenCookie();
+>>>>>>> 02f4630a63357cf40a04cd0c970dbb47c7bb37a7
               set({ 
                 user: null, 
                 isAuthenticated: false,
@@ -80,8 +94,14 @@ const useAuthStore = create(
             }
           } catch (error) {
             console.error('Auth check error:', error);
-            set({ isLoading: false });
+            
           }
+<<<<<<< HEAD
+=======
+         finally {
+          set({ isLoading: false });
+        }
+>>>>>>> 02f4630a63357cf40a04cd0c970dbb47c7bb37a7
       }
     }),
     {

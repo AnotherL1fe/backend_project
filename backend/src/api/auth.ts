@@ -134,13 +134,31 @@ router.get(
         // Изменить usercode на тип данных user но без пароля
         try {
             if (!req.user) return
-          
-
+            const userId = req.user.id;
             
+            if (!userId) {
+                return res.status(401).json({ error: "Not authenticated" });
+            }
 
-        
+            const user = await prisma.user.findUnique({
+                where: { id: +userId },
+                include: {
+                    posts: {
+                        select: {
+                            id: true,
+                            title: true,
+                            createdAt: true
+                        }
+                    }
+                }
+            });
 
-            const userWithoutPassword = new SafeUserDto(req.user);
+            if (!user) {
+                return res.status(404).json({ error: "User not found" });
+            }
+
+            const { password: _, ...userWithoutPassword } = user;
+            
             res.json({
                 user: userWithoutPassword
             });
