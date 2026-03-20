@@ -1,22 +1,22 @@
 //Библиотека для http-запросов
 import axios from 'axios';
 
-const API_BASE_URL = 'https://jsonplaceholder.typicode.com';
+import { BASEURL } from '.';
 
 const jsonPlaceholderAPI = {
   async fetchUsers() {
     try {
-      const response = await axios.get(`${API_BASE_URL}/users`);
+      const response = await axios.get(`${BASEURL}/users`);
       return response.data;
     } catch (error) {
       console.error('Error fetching users:', error);
       throw error;
-    }
+    } 
   },
 
   async fetchUserPosts(userId) {
     try {
-      const response = await axios.get(`${API_BASE_URL}/users/${userId}/posts`);
+      const response = await axios.get(`${BASEURL}/users/${userId}/posts`);
       return response.data;
     } catch (error) {
       console.error(`Error fetching posts for user ${userId}:`, error);
@@ -26,7 +26,7 @@ const jsonPlaceholderAPI = {
 
   async fetchUserById(userId) {
     try {
-      const response = await axios.get(`${API_BASE_URL}/users/${userId}`);
+      const response = await axios.get(`${BASEURL}/users/${userId}`);
       return response.data;
     } catch (error) {
       console.error(`Error fetching user ${userId}:`, error);

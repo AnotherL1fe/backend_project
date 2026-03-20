@@ -4,7 +4,7 @@ import './UserPosts.css';
 
 const UserPosts = ({ userId }) => {
   const posts = useDataStore((state) => state.getPostsByUserId(userId));
-  console.log(posts);
+
   
   if (!posts || posts.length === 0) {
     return (

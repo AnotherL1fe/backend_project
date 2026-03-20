@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import axios from 'axios';
 import useAuthStore from '../store/authStore';
 
-const API_URL = 'http://localhost:5000/api';
+import { BASEURL as API_URL } from '../api';
+
 
 export const useAuth = () => {
   const { 
