@@ -4,6 +4,7 @@ import Layout from './components/Layout/Layout';
 import HomePage from './pages/HomePage';
 import UserDetailPage from './pages/UserDetailPage';
 import CacheManager from './components/CacheManager/CacheManager';
+import SupportChat from './components/SupportChat/SupportChat.jsx';
 import { useStorageMonitor } from './hooks/useLocalStorage';
 import AddPostPage from './pages/addPostPage';
 import LoginPage from './pages/LoginPage';
@@ -86,10 +87,12 @@ const LogoutButton = ({ onLogout }) => {
 
 // Главный компонент с защищенными маршрутами
 const AppContent = () => {
-    const [isHovering, setIsHovering] = useState(false);
+    const [isHoveringSupport, setIsHoveringSupport] = useState(false);
+    const [isHoveringCache, setIsHoveringCache] = useState(false);
     const [showCacheManager, setShowCacheManager] = useState(false);
     const storageInfo = useStorageMonitor();
     const { user, logout } = useAuthStore();
+    const [showSupportManager, setShowSupportManager] = useState(false)
 
     const handleLogout = async () => {
         try {
@@ -114,9 +117,9 @@ const AppContent = () => {
                 {/* Кнопка для показа/скрытия менеджера кеша */}
                 <div className="cache-toggle">
                     <div
-                        className={`cache-toggle-button ${isHovering ? 'visible' : ''}`}
-                        onMouseEnter={() => setIsHovering(true)}
-                        onMouseLeave={() => setIsHovering(false)}
+                        className={`cache-toggle-button ${isHoveringCache ? 'visible' : ''}`}
+                        onMouseEnter={() => setIsHoveringCache(true)}
+                        onMouseLeave={() => setIsHoveringCache(false)}
                     >
                         <button
                             className="cache-manager-toggle"
@@ -124,19 +127,31 @@ const AppContent = () => {
                             title={`${storageInfo.usePercent || 0}% использовать`}
                         >
                             {showCacheManager ? '✕' : '⚙️'}
-                            {isHovering && (
-                                <span className="cache-tooltip">
-                                    {showCacheManager ? 'Скрыть кеш' : 'Показать кеш'}
-                                    <br />
-                                    <small>{storageInfo.usePercent || 0}% использовано</small>
+                        </button>
+                    </div>
+                </div>
+
+                {showCacheManager && <CacheManager />}
+                <div className="support-toggle">
+                    <div
+                        className={`supportChat-button ${isHoveringSupport ? 'visible' : ''}`}
+                        onMouseEnter={() => setIsHoveringSupport(true)}
+                        onMouseLeave={() => setIsHoveringSupport(false)}>
+                        <button
+                            className="supportChatManager"
+                            onClick={() => setShowSupportManager(!showSupportManager)}
+                        >
+                            {showSupportManager ? '✕' : '🗨️'}
+                            {isHoveringSupport && (
+                                <span className="support-tooltip">
+                                    {showSupportManager ? 'Закрыть чат' : 'Поддержка'}
                                 </span>
                             )}
                         </button>
                     </div>
                 </div>
 
-                {showCacheManager && <CacheManager />}
-
+                {showSupportManager && <SupportChat />}
                 {/* Информация о пользователе и кнопка выхода */}
                 {user && (
                     <div className="user-info-bar" style={{

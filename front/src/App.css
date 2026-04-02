@@ -61,3 +61,32 @@
   position: relative;
   cursor: pointer;
 }
+
+.support-toggle {
+  position:fixed;
+  bottom: 10px;
+  right: 0px;
+  z-index: 2000;
+}
+
+.supportChatManager {
+  margin: 20px;
+  padding: 10px 15px;
+  background: linear-gradient(135deg, #000000 0%, #757575 100%);
+  color: white;
+  border: none;
+  border-radius: 25px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.supportChatManager {
+  position: relative;
+  cursor: pointer;
+}
