@@ -10,6 +10,7 @@ import AddPostPage from './pages/addPostPage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import useAuthStore from './store/authStore';
+import AdminPanel from './components/Admin/AdminPanel';
 import './App.css';
 
 const API_URL = 'http://localhost:3001';
@@ -42,7 +43,8 @@ const ProtectedRoute = ({ children }) => {
 // Компонент для публичных маршрутов
 const PublicRoute = ({ children }) => {
     const { isAuthenticated, isLoading } = useAuthStore();
-
+    console.log(isAuthenticated);
+    
     if (isLoading) {
         return (
             <div style={{
@@ -93,6 +95,7 @@ const AppContent = () => {
     const storageInfo = useStorageMonitor();
     const { user, logout } = useAuthStore();
     const [showSupportManager, setShowSupportManager] = useState(false)
+// console.log(user);
 
     const handleLogout = async () => {
         try {
@@ -179,6 +182,7 @@ const AppContent = () => {
                     <Route path="/" element={<HomePage />} />
                     <Route path="/user/:id/*" element={<UserDetailPage />} />
                     <Route path="/add-post" element={<AddPostPage />} />
+                    <Route path="/admin" element={<AdminPanel />} />
                 </Routes>
             </div>
         </Layout>

@@ -41,7 +41,7 @@ const useAuthStore = create(
 
       logout: () => {
         removeTokenCookie();
-        
+      
         set({
           user: null,
           isAuthenticated: false,
@@ -52,32 +52,29 @@ const useAuthStore = create(
       setLoading: (loading) => set({ isLoading: loading }),
 
       checkAuth: async () => {
-          try {
-            const response = await fetch('http://localhost:3001/api/auth/me', {
-              method: 'GET',
-              credentials: 'include',
-              headers: {
-                'Content-Type': 'application/json',
-              }
-            });
-
-            if (response.ok) {
-              const data = await response.json();
-              set({ 
-                isAuthenticated: true,
-                isLoading: false 
-              });
-              console.log(21431);
-              
-            } else {
-              set({ 
-                user: null, 
-                isAuthenticated: false,
-                isLoading: false 
-              });
+        try {
+          const response = await fetch('http://localhost:3001/api/auth/me', {
+            method: 'GET',
+            credentials: 'include',
+            headers: {
+              'Content-Type': 'application/json',
             }
+          });
+
+          if (!response.ok) throw new Error("")
+
+          const data = await response.json();
+          if (!data.user) throw new Error("")
+
+          if (get().user.email !== data.user.email || get().user.username !== data.user.username) throw new Error("")
+          set({
+            isAuthenticated: true,
+            isLoading: false 
+          });
+            
           } catch (error) {
-            console.error('Auth check error:', error);
+            console.error('Auth check error:', error, get());
+            get().logout()
             
           }
       }

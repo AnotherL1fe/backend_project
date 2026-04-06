@@ -20,7 +20,8 @@ router.get("/", async (req: Request, res: Response) => {
                         title: true,
                         createdAt: true
                     }
-                }
+                },
+                role: true
             },
             orderBy: {
                 createdAt: 'desc'
