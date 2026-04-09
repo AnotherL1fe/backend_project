@@ -11,6 +11,7 @@ import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import useAuthStore from './store/authStore';
 import AdminPanel from './components/Admin/AdminPanel';
+import TicketChat from './components/Admin/TicketChat';
 import './App.css';
 
 const API_URL = 'http://localhost:3001';
@@ -183,6 +184,7 @@ const AppContent = () => {
                     <Route path="/user/:id/*" element={<UserDetailPage />} />
                     <Route path="/add-post" element={<AddPostPage />} />
                     <Route path="/admin" element={<AdminPanel />} />
+                    <Route path="/TicketChat" element={<TicketChat />}/>
                 </Routes>
             </div>
         </Layout>
