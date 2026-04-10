@@ -117,7 +117,7 @@ router.post(
             const newUser = await createUser({email, password, username})
 
             if (!newUser) throw new Error("server error on user create")
-            return res.status(200).json({ text: newUser });
+            return res.status(200).json({ user: newUser });
         } catch (e) {
             return res.status(400).json({ error: e });
         }

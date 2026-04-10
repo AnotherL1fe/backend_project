@@ -53,17 +53,12 @@ const RegisterPage = () => {
       if (!response.ok) {
         throw new Error(data.error || 'Ошибка при регистрации');
       }
-
-      if (data.user) {
-        const token = data.token || 'temp-token';
-        
-        login(data.user, token);
-        navigate('/');
-      }
+      if (!data.user) throw new Error('Backend did not send user data ')
+      navigate('/login');
       
     } catch (err) {
       console.error('Registration error:', err);
-      setError(err.message || 'Ошибка при регистрации');
+      setError('Ошибка при регистрации');
     } finally {
       setIsLoading(false);
     }

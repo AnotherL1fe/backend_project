@@ -1,14 +1,18 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
+import useAuthStore from '../../store/authStore';
 import './TicketChat.css';
-import { Link } from 'react-router-dom';
 
 const TicketChat = ({ ticket, onBack, onSendMessage }) => {
   console.log(ticket);
-  
+
   const [messages, setMessages] = useState(ticket?.messages || []);
   const [newMessage, setNewMessage] = useState('');
   const [sending, setSending] = useState(false);
   const messagesEndRef = useRef(null);
+  const { user } = useAuthStore();
+  const isAdmin = user?.role === 'ADMIN';
+  const navigate = useNavigate();
 
   const handleSendMessage = async (e) => {
     e.preventDefault();
@@ -23,7 +27,7 @@ const TicketChat = ({ ticket, onBack, onSendMessage }) => {
       author: { username: 'admin' },
       createdAt: new Date().toISOString()
     };
-    
+
     setMessages(prev => [...prev, messageData]);
     if (onSendMessage) onSendMessage(ticket.id, newMessage);
     setNewMessage('');
@@ -41,10 +45,20 @@ const TicketChat = ({ ticket, onBack, onSendMessage }) => {
     });
   };
 
+  const handleBack = () => {
+    if (isAdmin) {
+      navigate('/admin');
+    } else {
+      navigate('/');
+    }
+  };
+
   return (
     <div className="ticket-chat">
       <div className="chat-header">
-            <Link to="/admin" className="admin-back-link">← Вернуться к панели Администратора</Link>
+        <button className="back-btn" onClick={handleBack}>
+          ← {isAdmin ? 'Вернуться в админ-панель' : 'На главную'}
+        </button>
         {/* <div className="chat-title">
           <h2>{ticket.title}</h2>
           <div className="chat-meta">
