@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import useAuthStore from '../../store/authStore';
-import TicketChat from './TicketChat';
+import TicketChat from './SupportChat';
 import './AdminPanel.css';
 
 const AdminPanel = () => {

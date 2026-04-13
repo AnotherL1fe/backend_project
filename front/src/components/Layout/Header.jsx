@@ -13,7 +13,7 @@ const Header = () => {
     navigate('/login');
   };
 
-   return (
+  return (
     <header className="app-header">
       <div className="header-content">
         <div className="logo">
@@ -22,10 +22,16 @@ const Header = () => {
           </Link>
         </div>
         <div className="header-controls">
-          <ToggleView />
-          <Link to="/add-post" className="add-post-btn">
-            📝 Добавить пост
-          </Link>
+          <div className='toggle-view'><ToggleView /></div>
+          <div className='header-btns'>
+            <Link to="/add-post" className="add-post-btn">
+              📝 Добавить пост
+            </Link>
+            {/* Ссылка на чат поддержки */}
+            <Link to="/SupportChat" className="support-link">
+              🗨️ Чат поддержки
+            </Link>
+          </div>
         </div>
       </div>
     </header>

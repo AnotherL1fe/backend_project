@@ -49,8 +49,13 @@
 }
 
 @keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 .logout-btn:hover {
@@ -62,31 +67,12 @@
   cursor: pointer;
 }
 
-.support-toggle {
-  position:fixed;
-  bottom: 10px;
-  right: 0px;
-  z-index: 2000;
-}
-
-.supportChatManager {
-  margin: 20px;
-  padding: 10px 15px;
-  background: linear-gradient(135deg, #000000 0%, #757575 100%);
-  color: white;
-  border: none;
-  border-radius: 25px;
-  cursor: pointer;
-  font-size: 14px;
-  font-weight: 500;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
-}
-
-.supportChatManager {
-  position: relative;
-  cursor: pointer;
+.support-link {
+  padding: 6px 12px;
+  background-color: #000000;
+  color: #ffffff;
+  border-radius: 4px;
+  font-size: 13px;
+  margin-bottom: 5px;
+  text-decoration: none;
 }

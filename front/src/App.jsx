@@ -1,17 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, Link } from 'react-router-dom';
 import Layout from './components/Layout/Layout';
 import HomePage from './pages/HomePage';
 import UserDetailPage from './pages/UserDetailPage';
 import CacheManager from './components/CacheManager/CacheManager';
-import SupportChat from './components/SupportChat/SupportChat.jsx';
+// import SupportChat from './components/SupportChat/SupportChat.jsx';
 import { useStorageMonitor } from './hooks/useLocalStorage';
 import AddPostPage from './pages/addPostPage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import useAuthStore from './store/authStore';
 import AdminPanel from './components/Admin/AdminPanel';
-import TicketChat from './components/Admin/TicketChat';
+import SupportChat from './components/Admin/SupportChat';
 import './App.css';
 
 const API_URL = 'http://localhost:3001';
@@ -20,7 +20,7 @@ const API_URL = 'http://localhost:3001';
 const ProtectedRoute = ({ children }) => {
     const { isAuthenticated, isLoading } = useAuthStore();
 
-    
+
     if (isLoading) {
         return (
             <div style={{
@@ -45,7 +45,7 @@ const ProtectedRoute = ({ children }) => {
 const PublicRoute = ({ children }) => {
     const { isAuthenticated, isLoading } = useAuthStore();
     console.log(isAuthenticated);
-    
+
     if (isLoading) {
         return (
             <div style={{
@@ -96,7 +96,7 @@ const AppContent = () => {
     const storageInfo = useStorageMonitor();
     const { user, logout } = useAuthStore();
     const [showSupportManager, setShowSupportManager] = useState(false)
-// console.log(user);
+    // console.log(user);
 
     const handleLogout = async () => {
         try {
@@ -105,7 +105,7 @@ const AppContent = () => {
                 method: 'POST',
                 credentials: 'include'
             });
-            
+
             // Очищаем состояние в store
             logout();
         } catch (error) {
@@ -136,26 +136,7 @@ const AppContent = () => {
                 </div>
 
                 {showCacheManager && <CacheManager />}
-                <div className="support-toggle">
-                    <div
-                        className={`supportChat-button ${isHoveringSupport ? 'visible' : ''}`}
-                        onMouseEnter={() => setIsHoveringSupport(true)}
-                        onMouseLeave={() => setIsHoveringSupport(false)}>
-                        <button
-                            className="supportChatManager"
-                            onClick={() => setShowSupportManager(!showSupportManager)}
-                        >
-                            {showSupportManager ? '✕' : '🗨️'}
-                            {isHoveringSupport && (
-                                <span className="support-tooltip">
-                                    {showSupportManager ? 'Закрыть чат' : 'Поддержка'}
-                                </span>
-                            )}
-                        </button>
-                    </div>
-                </div>
 
-                {showSupportManager && <SupportChat />}
                 {/* Информация о пользователе и кнопка выхода */}
                 {user && (
                     <div className="user-info-bar" style={{
@@ -171,9 +152,9 @@ const AppContent = () => {
                         marginBottom: "50px"
                     }}>
                         <div>
-                        <span style={{ color: '#666' }}>
-                            Вы вошли как: <strong>{user.username}</strong>
-                        </span>
+                            <span style={{ color: '#666' }}>
+                                Вы вошли как: <strong>{user.username}</strong>
+                            </span>
                         </div>
                         <LogoutButton onLogout={handleLogout} />
                     </div>
@@ -184,7 +165,7 @@ const AppContent = () => {
                     <Route path="/user/:id/*" element={<UserDetailPage />} />
                     <Route path="/add-post" element={<AddPostPage />} />
                     <Route path="/admin" element={<AdminPanel />} />
-                    <Route path="/TicketChat" element={<TicketChat />}/>
+                    <Route path="/SupportChat" element={<SupportChat />} />
                 </Routes>
             </div>
         </Layout>
