@@ -27,9 +27,8 @@ const Header = () => {
             <Link to="/add-post" className="add-post-btn">
               📝 Добавить пост
             </Link>
-            {/* Ссылка на чат поддержки */}
-            <Link to="/SupportChat" className="support-link">
-              🗨️ Чат поддержки
+            <Link to="/tickets" className="support-link">
+              Создать обращение
             </Link>
           </div>
         </div>

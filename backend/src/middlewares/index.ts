@@ -3,6 +3,7 @@ import jwt from "jsonwebtoken";
 import type { UserCode } from "../types/user";
 import prisma from "../db";
 import { User } from "@prisma/client";
+import { log } from "node:console";
 export const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key";
 
 export interface AuthRequest extends Request {
@@ -15,6 +16,7 @@ const authenticateToken = (req: Request, res: Response, next: Function) => {
     const headerToken = authHeader && authHeader.split(' ')[1];
 
     const token = cookieToken || headerToken;
+console.log(token);
 
     if (!token) {
         return res.status(401).json({ error: "Access token required" });

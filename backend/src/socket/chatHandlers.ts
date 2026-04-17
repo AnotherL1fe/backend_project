@@ -1,126 +1,136 @@
-// backend/src/chat/chatHandlers.ts
 import { Server, Socket } from 'socket.io';
-import { DEFAULT_ROOM } from './chatTypes';
-import type {
-  ChatJoinAck,
-  ChatJoinPayload,
-  ChatSendAck,
-  ChatSendPayload,
-  SocketChatData,
-} from './chatTypes';
-import { addSystemMessage, addUserMessage, getRoomHistory } from './chatService';
+import { PrismaClient } from '@prisma/client';
 
-function isValidRoom(room: string): boolean {
-  return room.trim().length >= 1 && room.trim().length <= 40;
+const prisma = new PrismaClient();
+
+interface JoinChatData {
+  room: string;
+  nickname: string;
+  userId: number;
 }
 
-function isValidNickname(nickname: string): boolean {
-  return nickname.trim().length >= 1 && nickname.trim().length <= 30;
+interface SendMessageData {
+  text: string;
+  room: string;
+  nickname: string;
+  userId: number;
 }
 
-export function registerChatHandlers(io: Server) {
+export const registerChatHandlers = (io: Server) => {
   io.on('connection', (socket: Socket) => {
-    console.log('🟢 Chat client connected:', socket.id);
+    console.log(`User connected: ${socket.id}`);
     
-    const socketData = socket.data as SocketChatData;
-    if (!socketData.room) socketData.room = DEFAULT_ROOM;
+    let currentRoom: string | null = null;
 
-    socket.on(
-      'chat:join',
-      (payload: ChatJoinPayload, callback: (ack: ChatJoinAck) => void) => {
-        try {
-          const room = payload?.room?.toString?.() ?? '';
-          const nickname = payload?.nickname?.toString?.() ?? '';
-
-          console.log(`📝 User ${nickname} joining room ${room}`);
-
-          if (!isValidRoom(room)) {
-            callback({ ok: false, error: 'Некорректное имя комнаты' });
-            return;
-          }
-          if (!isValidNickname(nickname)) {
-            callback({ ok: false, error: 'Некорректное имя' });
-            return;
-          }
-
-          // Если пользователь переподключается/меняет комнату
-          if (socketData.room && socketData.room !== room) {
-            socket.leave(socketData.room);
-          }
-
-          socketData.room = room;
-          socketData.nickname = nickname;
-
-          socket.join(room);
-
-          // Отправляем историю сообщений
-          const history = getRoomHistory(room);
-          socket.emit('chat:history', history);
-
-          // Уведомляем всех о новом пользователе
-          const systemMessage = addSystemMessage({
-            room,
-            text: `${nickname} присоединился(лась)`,
-          });
-          io.to(room).emit('chat:message', systemMessage);
-
-          callback({ ok: true });
-        } catch (e) {
-          console.error('Join error:', e);
-          callback({
-            ok: false,
-            error: e instanceof Error ? e.message : 'Ошибка обработки join',
-          });
-        }
-      },
-    );
-
-    socket.on(
-      'chat:message',
-      (payload: ChatSendPayload, callback: (ack: ChatSendAck) => void) => {
-        try {
-          const room = payload?.room?.toString?.() ?? '';
-          const text = payload?.text?.toString?.() ?? '';
-
-          if (!socketData.room || socketData.room !== room) {
-            callback({ ok: false, error: 'Нет доступа к этой комнате' });
-            return;
-          }
-          if (!socketData.nickname) {
-            callback({ ok: false, error: 'Сначала выполните join' });
-            return;
-          }
-
-          const message = addUserMessage({
-            room,
-            nickname: socketData.nickname,
-            text,
-          });
-
-          io.to(room).emit('chat:message', message);
-          callback({ ok: true });
-        } catch (e) {
-          console.error('Message error:', e);
-          callback({
-            ok: false,
-            error: e instanceof Error ? e.message : 'Ошибка отправки сообщения',
-          });
-        }
-      },
-    );
-
-    socket.on('disconnect', () => {
-      console.log('🔴 Chat client disconnected:', socket.id);
+    // Подключение к комнате тикета
+    socket.on('join_chat', async (data: JoinChatData) => {
+      const { room, nickname, userId } = data;
       
-      const room = socketData.room;
-      const nickname = socketData.nickname;
-      if (!room || !nickname) return;
-
-      const systemMessage = addSystemMessage({
-        room,
-        text: `${nickname} вышел(ла)`,
+      if (!room || !nickname) {
+        socket.emit('error', 'Не указана комната или никнейм');
+        return;
+      }
+      
+      if (currentRoom) {
+        socket.leave(currentRoom);
+      }
+      
+      currentRoom = room;
+      socket.join(room);
+      
+      console.log(`${nickname} joined room: ${room}`);
+      
+      // Загрузка истории сообщений
+      const ticketId = room.startsWith('ticket_') ? parseInt(room.split('_')[1]) : null;
+      
+      if (ticketId && !isNaN(ticketId)) {
+        const messages = await prisma.message.findMany({
+          where: { ticketId },
+          include: {
+            author: {
+              select: { username: true }
+            }
+          },
+          orderBy: { createdAt: 'asc' }
+        });
+        
+        const history = messages.map(msg => ({
+          id: msg.id,
+          text: msg.content,
+          author: msg.author.username,
+          authorId: msg.authorId,
+          createdAt: msg.createdAt,
+          kind: 'message'
+        }));
+        
+        socket.emit('chat_history', history);
+      }
+      
+      socket.to(room).emit('system_message', {
+        text: `${nickname} присоединился к чату`,
+        timestamp: new Date()
       });
-      io.to(room).emit('chat:message', systemMessage);
+      
+      socket.emit('connected', { room, nickname });
+    });
+
+    // Отправка сообщения
+    socket.on('send_message', async (data: SendMessageData) => {
+      const { text, room, nickname, userId } = data;
+      
+      if (!text || !room || !nickname) {
+        socket.emit('error', 'Неверные данные');
+        return;
+      }
+      
+      const ticketId = room.startsWith('ticket_') ? parseInt(room.split('_')[1]) : null;
+      
+      let savedMessage = null;
+      
+      if (ticketId && !isNaN(ticketId)) {
+        savedMessage = await prisma.message.create({
+          data: {
+            content: text,
+            ticketId,
+            authorId: userId
+          },
+          include: {
+            author: {
+              select: { username: true }
+            }
+          }
+        });
+      }
+      
+      io.to(room).emit('new_message', {
+        id: savedMessage?.id || Date.now(),
+        text: text,
+        author: nickname,
+        authorId: userId,
+        createdAt: new Date(),
+        kind: 'message'
+      });
+    });
+
+    // Печатает
+    socket.on('typing', (data: { room: string; nickname: string; isTyping: boolean }) => {
+      if (currentRoom === data.room) {
+        socket.to(data.room).emit('user_typing', {
+          nickname: data.nickname,
+          isTyping: data.isTyping
+        });
+      }
+    });
+
+    // Отключение
+    socket.on('disconnect', () => {
+      if (currentRoom) {
+        io.to(currentRoom).emit('system_message', {
+          text: `Пользователь покинул чат`,
+          timestamp: new Date()
+        });
+      }
+      console.log(`User disconnected: ${socket.id}`);
     });
   });
-}
+};

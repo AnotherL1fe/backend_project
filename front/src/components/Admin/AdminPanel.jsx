@@ -1,35 +1,235 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import useAuthStore from '../../store/authStore';
-import TicketChat from './SupportChat';
 import './AdminPanel.css';
 
 const AdminPanel = () => {
-  const { user } = useAuthStore();
+  const { user, token } = useAuthStore();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('tickets');
-  const [selectedTicket, setSelectedTicket] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState('');
-
-  // Данные будут загружаться с бэкенда
+  const [message, setMessage] = useState({ text: '', type: '' });
+  
+  // Данные с бэкенда
   const [users, setUsers] = useState([]);
   const [posts, setPosts] = useState([]);
   const [tickets, setTickets] = useState([]);
+  const [stats, setStats] = useState({
+    totalUsers: 0,
+    totalPosts: 0,
+    activeTickets: 0,
+    closedTickets: 0
+  });
 
   const isAdmin = user?.role === 'ADMIN';
+  const backendUrl = 'http://localhost:3001';
 
-  const updateTicketStatus = (ticketId, newStatus) => {
-    // Будет вызван API
-    console.log('Update ticket status:', ticketId, newStatus);
+  // Загрузка данных при монтировании и смене вкладки
+  useEffect(() => {
+    if (isAdmin) {
+      loadData();
+    }
+  }, [activeTab, isAdmin]);
+
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      switch (activeTab) {
+        case 'tickets':
+          await loadTickets();
+          break;
+        case 'users':
+          await loadUsers();
+          break;
+        case 'posts':
+          await loadPosts();
+          break;
+      }
+      await loadStats();
+    } catch (error) {
+      console.error('Error loading data:', error);
+      showMessage('Ошибка загрузки данных', 'error');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const deleteUser = (userId) => {
-    // Будет вызван API
-    console.log('Delete user:', userId);
+  const loadStats = async () => {
+    try {
+      const response = await fetch(`${backendUrl}/api/admin/stats`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setStats(data);
+      }
+    } catch (error) {
+      console.error('Error loading stats:', error);
+    }
   };
 
-  const deletePost = (postId) => {
-    // Будет вызван API
-    console.log('Delete post:', postId);
+  const loadTickets = async () => {
+    try {
+      const response = await fetch(`${backendUrl}/api/tickets/all`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setTickets(data);
+      } else {
+        // Демо данные для разработки
+        setTickets([
+          {
+            id: 1,
+            subject: 'Проблема с авторизацией',
+            status: 'OPEN',
+            priority: 'high',
+            createdAt: new Date().toISOString(),
+            user: { username: 'user1' },
+            _count: { messages: 3 }
+          },
+          {
+            id: 2,
+            subject: 'Вопрос по оплате',
+            status: 'OPEN',
+            priority: 'medium',
+            createdAt: new Date().toISOString(),
+            user: { username: 'user2' },
+            _count: { messages: 5 }
+          }
+        ]);
+      }
+    } catch (error) {
+      console.error('Error loading tickets:', error);
+    }
+  };
+
+  const loadUsers = async () => {
+    try {
+      const response = await fetch(`${backendUrl}/api/admin/users`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setUsers(data);
+      } else {
+        // Демо данные
+        setUsers([
+          { id: 1, username: 'admin', email: 'admin@example.com', role: 'ADMIN', createdAt: new Date().toISOString(), _count: { posts: 10 } },
+          { id: 2, username: 'user1', email: 'user1@example.com', role: 'USER', createdAt: new Date().toISOString(), _count: { posts: 5 } }
+        ]);
+      }
+    } catch (error) {
+      console.error('Error loading users:', error);
+    }
+  };
+
+  const loadPosts = async () => {
+    try {
+      const response = await fetch(`${backendUrl}/api/admin/posts`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setPosts(data);
+      } else {
+        // Демо данные
+        setPosts([
+          { id: 1, title: 'Первый пост', content: 'Содержание поста...', createdAt: new Date().toISOString(), author: { username: 'user1' } }
+        ]);
+      }
+    } catch (error) {
+      console.error('Error loading posts:', error);
+    }
+  };
+
+  const showMessage = (text, type = 'success') => {
+    setMessage({ text, type });
+    setTimeout(() => setMessage({ text: '', type: '' }), 3000);
+  };
+
+  const updateTicketStatus = async (ticketId, newStatus) => {
+    try {
+      const response = await fetch(`${backendUrl}/api/tickets/${ticketId}/status`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ status: newStatus })
+      });
+      
+      if (response.ok) {
+        showMessage(`Тикет ${newStatus === 'CLOSED' ? 'закрыт' : 'открыт'}`, 'success');
+        await loadTickets();
+        await loadStats();
+      } else {
+        showMessage('Ошибка обновления статуса', 'error');
+      }
+    } catch (error) {
+      console.error('Error updating ticket status:', error);
+      showMessage('Ошибка обновления статуса', 'error');
+    }
+  };
+
+  const deleteUser = async (userId) => {
+    if (!window.confirm('Вы уверены, что хотите удалить этого пользователя?')) return;
+    
+    try {
+      const response = await fetch(`${backendUrl}/api/admin/users/${userId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (response.ok) {
+        showMessage('Пользователь удален', 'success');
+        await loadUsers();
+        await loadStats();
+      } else {
+        showMessage('Ошибка удаления пользователя', 'error');
+      }
+    } catch (error) {
+      console.error('Error deleting user:', error);
+      showMessage('Ошибка удаления пользователя', 'error');
+    }
+  };
+
+  const deletePost = async (postId) => {
+    if (!window.confirm('Вы уверены, что хотите удалить этот пост?')) return;
+    
+    try {
+      const response = await fetch(`${backendUrl}/api/admin/posts/${postId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (response.ok) {
+        showMessage('Пост удален', 'success');
+        await loadPosts();
+        await loadStats();
+      } else {
+        showMessage('Ошибка удаления поста', 'error');
+      }
+    } catch (error) {
+      console.error('Error deleting post:', error);
+      showMessage('Ошибка удаления поста', 'error');
+    }
+  };
+
+  const openTicketChat = (ticketId) => {
+    navigate(`/chat/${ticketId}`);
   };
 
   if (!isAdmin) {
@@ -41,19 +241,10 @@ const AdminPanel = () => {
     );
   }
 
-  if (selectedTicket) {
-    return (
-      <TicketChat 
-        ticket={selectedTicket} 
-        onBack={() => setSelectedTicket(null)}
-      />
-    );
-  }
-
   const getStatusBadge = (status) => {
-    return status === 'active' 
-      ? <span className="status-badge active">🟢 Активный</span>
-      : <span className="status-badge completed">🔴 Завершен</span>;
+    return status === 'OPEN' 
+      ? <span className="status-badge active">🟢 Открыт</span>
+      : <span className="status-badge completed">🔴 Закрыт</span>;
   };
 
   const getPriorityBadge = (priority) => {
@@ -72,31 +263,35 @@ const AdminPanel = () => {
         <p>Управление пользователями, контентом и тикетами</p>
       </div>
 
-      {message && <div className="admin-message">{message}</div>}
+      {message.text && (
+        <div className={`admin-message ${message.type}`}>
+          {message.text}
+        </div>
+      )}
 
       <div className="admin-stats">
         <div className="stat-card">
           <div className="stat-info">
             <h3>Пользователи</h3>
-            <p>{users.length}</p>
+            <p>{stats.totalUsers || users.length}</p>
           </div>
         </div>
         <div className="stat-card">
           <div className="stat-info">
             <h3>Посты</h3>
-            <p>{posts.length}</p>
+            <p>{stats.totalPosts || posts.length}</p>
           </div>
         </div>
         <div className="stat-card">
           <div className="stat-info">
             <h3>Активные тикеты</h3>
-            <p>{tickets.filter(t => t.status === 'active').length}</p>
+            <p>{stats.activeTickets || tickets.filter(t => t.status === 'OPEN').length}</p>
           </div>
         </div>
         <div className="stat-card">
           <div className="stat-info">
             <h3>Завершенные</h3>
-            <p>{tickets.filter(t => t.status === 'completed').length}</p>
+            <p>{stats.closedTickets || tickets.filter(t => t.status === 'CLOSED').length}</p>
           </div>
         </div>
       </div>
@@ -135,15 +330,14 @@ const AdminPanel = () => {
                 <div key={ticket.id} className="ticket-item">
                   <div className="ticket-info">
                     <div className="ticket-header">
-                      <h3>{ticket.title}</h3>
+                      <h3>#{ticket.id} - {ticket.subject}</h3>
                       <div className="ticket-badges">
                         {getStatusBadge(ticket.status)}
                         {getPriorityBadge(ticket.priority)}
                       </div>
                     </div>
-                    <p className="ticket-content">{ticket.content?.substring(0, 100)}</p>
                     <div className="ticket-meta">
-                      <span>👤 {ticket.user?.username}</span>
+                      <span>👤 {ticket.user?.username || ticket.userId}</span>
                       <span>📅 {new Date(ticket.createdAt).toLocaleDateString()}</span>
                       <span>💬 {ticket._count?.messages || 0} сообщений</span>
                     </div>
@@ -151,23 +345,23 @@ const AdminPanel = () => {
                   <div className="ticket-actions">
                     <button 
                       className="view-btn"
-                      onClick={() => setSelectedTicket(ticket)}
+                      onClick={() => openTicketChat(ticket.id)}
                     >
                       💬 Перейти в чат
                     </button>
-                    {ticket.status === 'active' ? (
+                    {ticket.status === 'OPEN' ? (
                       <button 
                         className="complete-btn"
-                        onClick={() => updateTicketStatus(ticket.id, 'completed')}
+                        onClick={() => updateTicketStatus(ticket.id, 'CLOSED')}
                       >
-                        ✅ Завершить тикет
+                        ✅ Закрыть тикет
                       </button>
                     ) : (
                       <button 
                         className="activate-btn"
-                        onClick={() => updateTicketStatus(ticket.id, 'active')}
+                        onClick={() => updateTicketStatus(ticket.id, 'OPEN')}
                       >
-                        🔄 Активировать
+                        🔄 Открыть тикет
                       </button>
                     )}
                   </div>
@@ -191,27 +385,31 @@ const AdminPanel = () => {
                     <th>ID</th>
                     <th>Имя пользователя</th>
                     <th>Email</th>
+                    <th>Роль</th>
                     <th>Дата регистрации</th>
                     <th>Постов</th>
                     <th>Действия</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {users.map(user => (
-                    <tr key={user.id}>
-                      <td>{user.id}</td>
-                      <td>{user.username}</td>
-                      <td>{user.email}</td>
-                      <td>{new Date(user.createdAt).toLocaleDateString()}</td>
-                      <td>{user._count?.posts || 0}</td>
+                  {users.map(userItem => (
+                    <tr key={userItem.id}>
+                      <td>{userItem.id}</td>
+                      <td>{userItem.username}</td>
+                      <td>{userItem.email}</td>
+                      <td>{userItem.role === 'ADMIN' ? '👑 Админ' : '👤 Пользователь'}</td>
+                      <td>{new Date(userItem.createdAt).toLocaleDateString()}</td>
+                      <td>{userItem._count?.posts || 0}</td>
                       <td>
-                        <button 
-                          className="delete-btn"
-                          onClick={() => deleteUser(user.id)}
-                          title="Удалить пользователя"
-                        >
-                          🗑️
-                        </button>
+                        {userItem.role !== 'ADMIN' && (
+                          <button 
+                            className="delete-btn"
+                            onClick={() => deleteUser(userItem.id)}
+                            title="Удалить пользователя"
+                          >
+                            🗑️
+                          </button>
+                        )}
                       </td>
                     </tr>
                   ))}
@@ -234,10 +432,10 @@ const AdminPanel = () => {
                   <div className="post-info">
                     <h3>{post.title}</h3>
                     <p className="post-meta">
-                      Автор: {post.author?.username} | 
+                      Автор: {post.author?.username || post.userId} | 
                       Дата: {new Date(post.createdAt).toLocaleDateString()}
                     </p>
-                    <p className="post-preview">{post.content?.substring(0, 100)}...</p>
+                    <p className="post-preview">{post.content?.substring(0, 150)}...</p>
                   </div>
                   <div className="post-actions">
                     <button 

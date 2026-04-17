@@ -12,6 +12,7 @@ import RegisterPage from './pages/RegisterPage';
 import useAuthStore from './store/authStore';
 import AdminPanel from './components/Admin/AdminPanel';
 import SupportChat from './components/Admin/SupportChat';
+import UserTickets from './components/Admin/UserTickets';
 import './App.css';
 
 const API_URL = 'http://localhost:3001';
@@ -165,7 +166,8 @@ const AppContent = () => {
                     <Route path="/user/:id/*" element={<UserDetailPage />} />
                     <Route path="/add-post" element={<AddPostPage />} />
                     <Route path="/admin" element={<AdminPanel />} />
-                    <Route path="/SupportChat" element={<SupportChat />} />
+                    <Route path="/chat/:ticketId" element={<SupportChat />} />
+                    <Route path="/tickets" element={<UserTickets />} />
                 </Routes>
             </div>
         </Layout>

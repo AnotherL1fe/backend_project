@@ -4,6 +4,7 @@ import routerAuth from "./api/auth"
 import routerPosts from "./api/posts"
 import cookieParser from "cookie-parser";
 import routerUsers from "./api/users"
+import routerTickets from "./api/tickets"
 import { Server as SocketServer } from 'socket.io';
 import http from "http"
 import { registerChatHandlers } from './socket/chatHandlers';
@@ -36,6 +37,7 @@ app.get("/", (req: Request, res: Response) => {
 app.use("/api/auth", routerAuth);
 app.use("/api/posts", routerPosts)
 app.use("/api/users", routerUsers)
+app.use("/api/tickets", routerTickets)
 
 
 server.listen(PORT, () => {

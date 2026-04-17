@@ -1,28 +1,41 @@
-// frontend/src/components/SupportChat/SupportChat.jsx
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import useAuthStore from '../../store/authStore';
 import { useChatSocket } from './useChatSocket';
 import './SupportChat.css';
 
 const SupportChat = () => {
+  const { ticketId } = useParams();
   const { user } = useAuthStore();
   const navigate = useNavigate();
-  const isAdmin = user?.role === 'ADMIN' || user?.email === 'admin@example.com';
+  const isAdmin = user?.role === 'ADMIN' || user?.email === '';
 
   const backendUrl = 'http://localhost:3001';
 
-  // Генерируем уникальную комнату для пользователя/админа
+  // Проверка наличия ticketId и редирект
+  useEffect(() => {
+    if (!ticketId) {
+      if (isAdmin) {
+        navigate('/admin/tickets');
+      } else {
+        navigate('/tickets');
+      }
+    }
+  }, [ticketId, isAdmin, navigate]);
+
+  // Генерируем комнату только если есть ticketId
   const defaultRoom = useMemo(() => {
-    if (isAdmin) return 'support_admin';
-    // return `support_user_${user?.id || 'guest'}`;
-    return 'support_admin'
-  }, [isAdmin, user?.id]);
+    if (ticketId) {
+      return `ticket_${ticketId}`;
+    }
+    return null;
+  }, [ticketId]);
 
   const [room, setRoom] = useState(defaultRoom);
   const [nickname, setNickname] = useState(user?.username || 'user');
   const [text, setText] = useState('');
   const [isConnecting, setIsConnecting] = useState(false);
+  const [ticketInfo, setTicketInfo] = useState(null);
 
   const { status, error, messages, connect, disconnect, sendMessage } = useChatSocket(backendUrl);
 
@@ -31,15 +44,42 @@ const SupportChat = () => {
   const connected = status === 'connected';
   const connecting = status === 'connecting';
 
+  // Загрузка информации о тикете
+  useEffect(() => {
+    if (ticketId) {
+      fetchTicketInfo();
+    }
+  }, [ticketId]);
+
+  const fetchTicketInfo = async () => {
+    try {
+      const response = await fetch(`${backendUrl}/api/tickets/${ticketId}`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setTicketInfo(data);
+      }
+    } catch (error) {
+      console.error('Error fetching ticket info:', error);
+    }
+  };
+
   // Автоподключение при загрузке
   useEffect(() => {
-    if (user && !connected && !connecting && !isConnecting) {
+    if (user && room && !connected && !connecting && !isConnecting) {
       setIsConnecting(true);
       const normalizedRoom = room.trim();
       const normalizedNickname = nickname.trim();
 
       if (normalizedRoom && normalizedNickname) {
-        console.log('Auto-connecting to chat:', { room: normalizedRoom, nickname: normalizedNickname });
+        console.log('Auto-connecting to ticket chat:', { 
+          room: normalizedRoom, 
+          nickname: normalizedNickname,
+          ticketId 
+        });
         connect({ room: normalizedRoom, nickname: normalizedNickname });
       }
       setIsConnecting(false);
@@ -50,7 +90,7 @@ const SupportChat = () => {
         disconnect();
       }
     };
-  }, [user, room, nickname, connect, disconnect, connected, connecting, isConnecting]);
+  }, [user, room, nickname, connect, disconnect, connected, connecting, isConnecting, ticketId]);
 
   // Скролл к новым сообщениям
   useEffect(() => {
@@ -85,7 +125,7 @@ const SupportChat = () => {
     if (isAdmin) {
       navigate('/admin');
     } else {
-      navigate('/');
+      navigate('/tickets');
     }
   };
 
@@ -97,19 +137,48 @@ const SupportChat = () => {
     });
   };
 
+  // Показываем загрузку, если нет ticketId
+  if (!ticketId) {
+    return (
+      <div className="support-chat">
+        <div className="chat-header">
+          <button className="back-btn" onClick={handleBack}>
+            ← {isAdmin ? 'Вернуться к тикетам' : 'Мои тикеты'}
+          </button>
+          <div className="chat-title">
+            <h2>Чат поддержки</h2>
+          </div>
+        </div>
+        <div className="chat-panel">
+          <div className="loading-message">
+            Перенаправление...
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="support-chat">
       <div className="chat-header">
         <button className="back-btn" onClick={handleBack}>
-          ← {isAdmin ? 'Вернуться в админ-панель' : 'На главную'}
+          ← {isAdmin ? 'Вернуться к тикетам' : 'Мои тикеты'}
         </button>
         <div className="chat-title">
           <h2>Чат поддержки</h2>
           <div className="chat-meta">
+            {ticketInfo && (
+              <>
+                <span>🎫 Тикет #{ticketInfo.id}</span>
+                <span>📝 {ticketInfo.subject}</span>
+                <span className={`status-badge ${ticketInfo.status === 'OPEN' ? 'open' : 'closed'}`}>
+                  {ticketInfo.status === 'OPEN' ? '🟢 Открыт' : '🔴 Закрыт'}
+                </span>
+              </>
+            )}
             <span>👤 {nickname}</span>
-            <span>📱 Комната: {room}</span>
             <span className={`status-badge ${connected ? 'online' : 'offline'}`}>
-              {connected ? '🟢 Онлайн' : connecting ? '🟡 Подключение...' : '⚫ Офлайн'}
+              {connected ? '🟢 В чате' : connecting ? '🟡 Подключение...' : '⚫ Не в чате'}
             </span>
           </div>
         </div>
@@ -119,7 +188,9 @@ const SupportChat = () => {
         <div className="chat-messages">
           {messages.length === 0 ? (
             <div className="no-messages">
-              {connected ? 'Нет сообщений. Начните диалог с поддержкой.' : 'Подключение к чату...'}
+              {connected 
+                ? 'Чат готов к работе. Опишите вашу проблему.' 
+                : 'Подключение к чату...'}
             </div>
           ) : (
             messages.map((msg, idx) => {
@@ -148,14 +219,6 @@ const SupportChat = () => {
             <div className="connection-controls">
               <div className="connect-form">
                 <div className="connect-field">
-                  <label>Комната</label>
-                  <input
-                    value={room}
-                    onChange={(e) => setRoom(e.target.value)}
-                    placeholder="support_room"
-                  />
-                </div>
-                <div className="connect-field">
                   <label>Никнейм</label>
                   <input
                     value={nickname}
@@ -166,9 +229,9 @@ const SupportChat = () => {
                 <button
                   className="connect-btn"
                   onClick={handleManualConnect}
-                  disabled={!room.trim() || !nickname.trim()}
+                  disabled={!nickname.trim()}
                 >
-                  Подключиться
+                  Подключиться к чату
                 </button>
               </div>
             </div>
@@ -216,7 +279,7 @@ const SupportChat = () => {
         </div>
 
         <div className="chat-footer-hint">
-          💡 Поддержка доступна 24/7. Опишите вашу проблему, и мы поможем!
+          💡 Поддержка ответит в ближайшее время. Пожалуйста, описывайте проблему подробно.
         </div>
       </div>
     </div>
@@ -224,109 +287,3 @@ const SupportChat = () => {
 };
 
 export default SupportChat;
-
-
-// import React, { useState, useEffect, useRef } from 'react';
-// import { useNavigate } from 'react-router-dom';
-// import useAuthStore from '../../store/authStore';
-// import './TicketChat.css';
-
-// const TicketChat = ({ ticket, onBack, onSendMessage }) => {
-//   console.log(ticket);
-
-//   const [messages, setMessages] = useState(ticket?.messages || []);
-//   const [newMessage, setNewMessage] = useState('');
-//   const [sending, setSending] = useState(false);
-//   const messagesEndRef = useRef(null);
-//   const { user } = useAuthStore();
-//   const isAdmin = user?.role === 'ADMIN';
-//   const navigate = useNavigate();
-
-//   const handleSendMessage = async (e) => {
-//     e.preventDefault();
-//     if (!newMessage.trim()) return;
-
-//     setSending(true);
-//     // Здесь будет API вызов
-//     const messageData = {
-//       id: Date.now(),
-//       content: newMessage,
-//       authorId: 2,
-//       author: { username: 'admin' },
-//       createdAt: new Date().toISOString()
-//     };
-
-//     setMessages(prev => [...prev, messageData]);
-//     if (onSendMessage) onSendMessage(ticket.id, newMessage);
-//     setNewMessage('');
-//     setSending(false);
-//   };
-
-//   useEffect(() => {
-//     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-//   }, [messages]);
-
-//   const formatTime = (date) => {
-//     return new Date(date).toLocaleTimeString('ru-RU', {
-//       hour: '2-digit',
-//       minute: '2-digit'
-//     });
-//   };
-
-//   const handleBack = () => {
-//     if (isAdmin) {
-//       navigate('/admin');
-//     } else {
-//       navigate('/');
-//     }
-//   };
-
-//   return (
-//     <div className="ticket-chat">
-//       <div className="chat-header">
-//         <button className="back-btn" onClick={handleBack}>
-//           ← {isAdmin ? 'Вернуться в админ-панель' : 'На главную'}
-//         </button>
-//         {/* <div className="chat-title">
-//           <h2>{ticket.title}</h2>
-//           <div className="chat-meta">
-//             <span>👤 {ticket.user?.username}</span>
-//             <span>📧 {ticket.user?.email}</span>
-//           </div>
-//         </div> */}
-//       </div>
-
-//       <div className="chat-messages">
-//         {messages.length === 0 ? (
-//           <div className="no-messages">Нет сообщений. Начните диалог с пользователем.</div>
-//         ) : (
-//           messages.map((msg, idx) => (
-//             <div key={idx} className={`message ${msg.authorId === ticket.UserId ? 'user' : 'admin'}`}>
-//               <div className="message-header">
-//                 <strong>{msg.author?.username}</strong>
-//                 <span className="message-time">{formatTime(msg.createdAt)}</span>
-//               </div>
-//               <div className="message-content">{msg.content}</div>
-//             </div>
-//           ))
-//         )}
-//         <div ref={messagesEndRef} />
-//       </div>
-
-//       <form className="chat-input" onSubmit={handleSendMessage}>
-//         <textarea
-//           value={newMessage}
-//           onChange={(e) => setNewMessage(e.target.value)}
-//           placeholder="Введите сообщение..."
-//           disabled={sending}
-//           rows={3}
-//         />
-//         <button type="submit" disabled={sending || !newMessage.trim()}>
-//           {sending ? 'Отправка...' : 'Отправить'}
-//         </button>
-//       </form>
-//     </div>
-//   );
-// };
-
-// export default TicketChat;
