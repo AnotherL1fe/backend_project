@@ -49,4 +49,17 @@ export interface SocketChatData {
   nickname?: ChatNickname
 }
 
+export interface SendMessageData {
+  text: string;
+  room: string;
+  nickname: string;
+  userId: number;
+}
+
+export interface JoinChatData {
+  room: string;
+  nickname: string;
+  userId: number;
+}
+
 export const DEFAULT_ROOM = 'public'

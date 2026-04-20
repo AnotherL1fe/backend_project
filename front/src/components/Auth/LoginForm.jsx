@@ -9,6 +9,8 @@ const LoginForm = ({ onLogin, isLoading, error, switchToRegister }) => {
   });
 
   const handleSubmit = (e) => {
+    console.log('submit login');
+    
     e.preventDefault();
     onLogin(formData);
   };

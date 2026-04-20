@@ -43,3 +43,26 @@ export interface ChatSendAckError {
 }
 
 export type ChatSendAck = ChatSendAckOk | ChatSendAckError
+
+export interface Message {
+  id: number;
+  text: string;
+  author: string;
+  authorId: number;
+  createdAt: string;
+  kind?: 'message' | 'system';
+}
+
+export interface TicketInfo {
+  id: number;
+  subject: string;
+  status: 'OPEN' | 'CLOSED';
+  priority: 'low' | 'medium' | 'high';
+  description?: string;
+  createdAt: string;
+  author: {
+    id: number;
+    username: string;
+    email: string;
+  };
+}

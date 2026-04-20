@@ -11,8 +11,8 @@ import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import useAuthStore from './store/authStore';
 import AdminPanel from './components/Admin/AdminPanel';
-import SupportChat from './components/Admin/SupportChat';
-import UserTickets from './components/Admin/UserTickets';
+import SupportChat from './components/SupportChat/SupportChat'
+import UserTickets from './components/UserTickets/UserTickets';
 import './App.css';
 
 const API_URL = 'http://localhost:3001';

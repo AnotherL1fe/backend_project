@@ -1,20 +1,9 @@
 import { Server, Socket } from 'socket.io';
 import { PrismaClient } from '@prisma/client';
+import { JoinChatData } from './chatTypes';
+import { SendMessageData } from './chatTypes';
 
 const prisma = new PrismaClient();
-
-interface JoinChatData {
-  room: string;
-  nickname: string;
-  userId: number;
-}
-
-interface SendMessageData {
-  text: string;
-  room: string;
-  nickname: string;
-  userId: number;
-}
 
 export const registerChatHandlers = (io: Server) => {
   io.on('connection', (socket: Socket) => {
@@ -72,6 +61,8 @@ export const registerChatHandlers = (io: Server) => {
       });
       
       socket.emit('connected', { room, nickname });
+      console.log("WEBSOCKET CONCTED ");
+      
     });
 
     // Отправка сообщения

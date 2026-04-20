@@ -1,11 +1,11 @@
-// UserTickets.js
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import useAuthStore from '../../store/authStore';
+// import { Ticket } from './ticketTypes'
 import './UserTickets.css';
 
 const UserTickets = () => {
-  const { user, token } = useAuthStore();
+  const { user } = useAuthStore();
   const navigate = useNavigate();
   const [tickets, setTickets] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -31,8 +31,10 @@ const UserTickets = () => {
     setError('');
     try {
       const response = await fetch(`${backendUrl}/api/tickets/my`, {
+        method: 'GET',
+        credentials: 'include', // 👈 ВАЖНО: отправляем куки
         headers: {
-          'Authorization': `Bearer ${token}`
+          'Content-Type': 'application/json',
         }
       });
 
@@ -41,6 +43,8 @@ const UserTickets = () => {
         setTickets(data);
       } else if (response.status === 401) {
         setError('Сессия истекла. Пожалуйста, войдите снова.');
+        // Перенаправляем на логин через 2 секунды
+        setTimeout(() => navigate('/login'), 2000);
       } else {
         setError('Ошибка загрузки тикетов');
       }
@@ -88,10 +92,9 @@ const UserTickets = () => {
     try {
       const response = await fetch(`${backendUrl}/api/tickets`, {
         method: 'POST',
-        credentials: 'include',
+        credentials: 'include', // 👈 ВАЖНО: отправляем куки
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
           subject: newTicket.subject,
@@ -102,11 +105,12 @@ const UserTickets = () => {
 
       if (response.ok) {
         const ticket = await response.json();
-        // Закрываем форму и переходим в чат
         setShowCreateForm(false);
         setNewTicket({ subject: '', priority: 'medium', description: '' });
-        // Переходим в чат с новым тикетом
         navigate(`/chat/${ticket.id}`);
+      } else if (response.status === 401) {
+        setError('Сессия истекла. Пожалуйста, войдите снова.');
+        setTimeout(() => navigate('/login'), 2000);
       } else {
         const errorData = await response.json();
         setError(errorData.message || 'Ошибка создания тикета');
@@ -139,19 +143,21 @@ const UserTickets = () => {
       : <span className="status-badge closed">🔴 Закрыт</span>;
   };
 
-  const getPriorityBadge = (priority) => {
-    const badges = {
-      low: <span className="priority-badge low">🟢 Низкий</span>,
-      medium: <span className="priority-badge medium">🟡 Средний</span>,
-      high: <span className="priority-badge high">🔴 Высокий</span>
-    };
-    return badges[priority] || badges.medium;
-  };
+const getPriorityBadge = (priority) => {
+  switch (priority) {
+    case 'low':
+      return <span className="priority-badge low">🟢 Низкий</span>;
+    case 'high':
+      return <span className="priority-badge high">🔴 Высокий</span>;
+    default:
+      return <span className="priority-badge medium">🟡 Средний</span>;
+  }
+};
 
   const formatDate = (dateString) => {
     const date = new Date(dateString);
     const now = new Date();
-    const diffTime = Math.abs(now - date);
+    const diffTime = Math.abs(now.getTime() - date.getTime());
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     
     if (diffDays === 0) {
@@ -299,7 +305,7 @@ const UserTickets = () => {
                   value={newTicket.description}
                   onChange={(e) => setNewTicket({...newTicket, description: e.target.value})}
                   placeholder="Подробно опишите вашу проблему. Это поможет нам быстрее вам помочь."
-                  rows="5"
+                  rows={5}
                 />
               </div>
               

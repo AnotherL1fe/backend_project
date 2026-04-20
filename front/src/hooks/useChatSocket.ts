@@ -5,8 +5,8 @@ import type {
   ChatMessage,
   ChatJoinPayload,
   ChatSendAck,
-} from './chatTypes'
-import type { ChatRoomName } from './chatTypes'
+} from '../components/SupportChat/chatTypes'
+import type { ChatRoomName } from '../components/SupportChat/chatTypes'
 
 type ChatConnectionStatus = 'disconnected' | 'connecting' | 'connected' | 'error'
 
@@ -35,24 +35,32 @@ export function useChatSocket(backendUrl: string) {
     setStatus('disconnected')
   }, [])
 
-  const connect = useCallback(
-    (payload: ChatJoinPayload) => {
-      setError(null)
+  const connect = useCallback((payload: ChatJoinPayload) => {
+    if (socketRef.current && activeRoomRef.current === payload.room && status === 'connected') {
+      console.log('Already connected to this room');
+      return;
+    }
 
-      // Если уже есть активное соединение — разрываем, чтобы не ловить дубликаты событий.
-      disconnect()
+    // Отключаем существующее соединение
+    if (socketRef.current) {
+      disconnect();
+    }
 
-      const socket = io(backendUrl, {
-        autoConnect: false,
-        transports: ['websocket'],
-      })
+    setError(null);
+    setStatus('connecting');
 
-      socketRef.current = socket
-      activeRoomRef.current = payload.room
-      setStatus('connecting')
+    const socket = io(backendUrl, {
+      autoConnect: false,
+      transports: ['websocket'],
+    });
+
+    socketRef.current = socket;
+    activeRoomRef.current = payload.room;
 
       socket.on('connect', () => {
         const onJoinAck = (ack: ChatJoinAck) => {
+          console.log(ack);
+          
           if (ack.ok) {
             setStatus('connected')
           } else {
@@ -107,9 +115,15 @@ export function useChatSocket(backendUrl: string) {
   )
 
   useEffect(() => {
-    return () => disconnect()
-  }, [disconnect])
-
+    return () => {
+      if (socketRef.current) {
+        socketRef.current.removeAllListeners();
+        socketRef.current.disconnect();
+        socketRef.current = null;
+      }
+    };
+  }, []);
+  
   return {
     status,
     error,
