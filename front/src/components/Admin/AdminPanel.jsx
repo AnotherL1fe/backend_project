@@ -6,7 +6,7 @@ import './AdminPanel.css';
 const AdminPanel = () => {
   const { user, token } = useAuthStore();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('tickets');
+  const [activeTab, setActiveTab] = useState('users'); // По умолчанию показываем пользователей
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState({ text: '', type: '' });
   
@@ -17,6 +17,7 @@ const AdminPanel = () => {
   const [stats, setStats] = useState({
     totalUsers: 0,
     totalPosts: 0,
+    totalTickets: 0,
     activeTickets: 0,
     closedTickets: 0
   });
@@ -26,14 +27,18 @@ const AdminPanel = () => {
 
   // Загрузка данных при монтировании и смене вкладки
   useEffect(() => {
-    if (isAdmin) {
+    if (isAdmin && token) {
       loadData();
     }
-  }, [activeTab, isAdmin]);
+  }, [activeTab, isAdmin, token]);
 
   const loadData = async () => {
     setLoading(true);
     try {
+      // Всегда загружаем статистику
+      await loadStats();
+      
+      // Загружаем данные в зависимости от вкладки
       switch (activeTab) {
         case 'tickets':
           await loadTickets();
@@ -45,7 +50,6 @@ const AdminPanel = () => {
           await loadPosts();
           break;
       }
-      await loadStats();
     } catch (error) {
       console.error('Error loading data:', error);
       showMessage('Ошибка загрузки данных', 'error');
@@ -57,97 +61,106 @@ const AdminPanel = () => {
   const loadStats = async () => {
     try {
       const response = await fetch(`${backendUrl}/api/admin/stats`, {
+        method: 'GET',
         headers: {
-          'Authorization': `Bearer ${token}`
-        }
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include'
       });
+      
       if (response.ok) {
         const data = await response.json();
         setStats(data);
+        console.log('Stats loaded:', data);
+      } else {
+        console.error('Failed to load stats:', response.status);
       }
     } catch (error) {
       console.error('Error loading stats:', error);
     }
   };
 
-  const loadTickets = async () => {
-    try {
-      const response = await fetch(`${backendUrl}/api/tickets/all`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setTickets(data);
-      } else {
-        // Демо данные для разработки
-        setTickets([
-          {
-            id: 1,
-            subject: 'Проблема с авторизацией',
-            status: 'OPEN',
-            priority: 'high',
-            createdAt: new Date().toISOString(),
-            user: { username: 'user1' },
-            _count: { messages: 3 }
-          },
-          {
-            id: 2,
-            subject: 'Вопрос по оплате',
-            status: 'OPEN',
-            priority: 'medium',
-            createdAt: new Date().toISOString(),
-            user: { username: 'user2' },
-            _count: { messages: 5 }
-          }
-        ]);
-      }
-    } catch (error) {
-      console.error('Error loading tickets:', error);
-    }
-  };
-
   const loadUsers = async () => {
     try {
-      const response = await fetch(`${backendUrl}/api/admin/users`, {
+      console.log('Loading users from database...');
+      const response = await fetch(`${backendUrl}/api/admin`, {
+        method: 'GET',
         headers: {
-          'Authorization': `Bearer ${token}`
-        }
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include'
       });
+      
       if (response.ok) {
         const data = await response.json();
-        setUsers(data);
+        // Обрабатываем ответ в зависимости от формата
+        const usersData = data.users || data;
+        setUsers(usersData);
+        console.log('Users loaded:', usersData.length);
       } else {
-        // Демо данные
-        setUsers([
-          { id: 1, username: 'admin', email: 'admin@example.com', role: 'ADMIN', createdAt: new Date().toISOString(), _count: { posts: 10 } },
-          { id: 2, username: 'user1', email: 'user1@example.com', role: 'USER', createdAt: new Date().toISOString(), _count: { posts: 5 } }
-        ]);
+        console.error('Failed to load users:', response.status);
+        const error = await response.json();
+        showMessage(error.error || 'Ошибка загрузки пользователей', 'error');
+        setUsers([]);
       }
     } catch (error) {
       console.error('Error loading users:', error);
+      showMessage('Ошибка подключения к серверу', 'error');
+      setUsers([]);
+    }
+  };
+
+  const loadTickets = async () => {
+    try {
+      const response = await fetch(`${backendUrl}/api/admin`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include'
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        const ticketsData = data.tickets || data;
+        setTickets(ticketsData);
+        console.log('Tickets loaded:', ticketsData.length);
+      } else {
+        console.error('Failed to load tickets:', response.status);
+        setTickets([]);
+      }
+    } catch (error) {
+      console.error('Error loading tickets:', error);
+      setTickets([]);
     }
   };
 
   const loadPosts = async () => {
     try {
-      const response = await fetch(`${backendUrl}/api/admin/posts`, {
+      const response = await fetch(`${backendUrl}/api/admin`, {
+        method: 'GET',
         headers: {
-          'Authorization': `Bearer ${token}`
-        }
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include'
       });
+      
       if (response.ok) {
         const data = await response.json();
-        setPosts(data);
+        const postsData = data.posts || data;
+        setPosts(postsData);
+        console.log('Posts loaded:', postsData.length);
       } else {
-        // Демо данные
-        setPosts([
-          { id: 1, title: 'Первый пост', content: 'Содержание поста...', createdAt: new Date().toISOString(), author: { username: 'user1' } }
-        ]);
+        console.error('Failed to load posts:', response.status);
+        setPosts([]);
       }
     } catch (error) {
       console.error('Error loading posts:', error);
+      setPosts([]);
     }
   };
 
@@ -158,12 +171,13 @@ const AdminPanel = () => {
 
   const updateTicketStatus = async (ticketId, newStatus) => {
     try {
-      const response = await fetch(`${backendUrl}/api/tickets/${ticketId}/status`, {
+      const response = await fetch(`${backendUrl}/api/admin/tickets/${ticketId}/status`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
+        credentials: 'include',
         body: JSON.stringify({ status: newStatus })
       });
       
@@ -172,7 +186,8 @@ const AdminPanel = () => {
         await loadTickets();
         await loadStats();
       } else {
-        showMessage('Ошибка обновления статуса', 'error');
+        const error = await response.json();
+        showMessage(error.error || 'Ошибка обновления статуса', 'error');
       }
     } catch (error) {
       console.error('Error updating ticket status:', error);
@@ -188,7 +203,8 @@ const AdminPanel = () => {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`
-        }
+        },
+        credentials: 'include'
       });
       
       if (response.ok) {
@@ -196,7 +212,8 @@ const AdminPanel = () => {
         await loadUsers();
         await loadStats();
       } else {
-        showMessage('Ошибка удаления пользователя', 'error');
+        const error = await response.json();
+        showMessage(error.error || 'Ошибка удаления пользователя', 'error');
       }
     } catch (error) {
       console.error('Error deleting user:', error);
@@ -212,7 +229,8 @@ const AdminPanel = () => {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`
-        }
+        },
+        credentials: 'include'
       });
       
       if (response.ok) {
@@ -220,7 +238,8 @@ const AdminPanel = () => {
         await loadPosts();
         await loadStats();
       } else {
-        showMessage('Ошибка удаления поста', 'error');
+        const error = await response.json();
+        showMessage(error.error || 'Ошибка удаления поста', 'error');
       }
     } catch (error) {
       console.error('Error deleting post:', error);
@@ -249,11 +268,11 @@ const AdminPanel = () => {
 
   const getPriorityBadge = (priority) => {
     const badges = {
-      low: <span className="priority-badge low">🟢 Низкий</span>,
-      medium: <span className="priority-badge medium">🟡 Средний</span>,
-      high: <span className="priority-badge high">🔴 Высокий</span>
+      LOW: <span className="priority-badge low">🟢 Низкий</span>,
+      MEDIUM: <span className="priority-badge medium">🟡 Средний</span>,
+      HIGH: <span className="priority-badge high">🔴 Высокий</span>
     };
-    return badges[priority] || badges.medium;
+    return badges[priority] || badges.MEDIUM;
   };
 
   return (
@@ -284,25 +303,19 @@ const AdminPanel = () => {
         </div>
         <div className="stat-card">
           <div className="stat-info">
-            <h3>Активные тикеты</h3>
-            <p>{stats.activeTickets || tickets.filter(t => t.status === 'OPEN').length}</p>
+            <h3>Всего тикетов</h3>
+            <p>{stats.totalTickets || tickets.length}</p>
           </div>
         </div>
         <div className="stat-card">
           <div className="stat-info">
-            <h3>Завершенные</h3>
-            <p>{stats.closedTickets || tickets.filter(t => t.status === 'CLOSED').length}</p>
+            <h3>Активные тикеты</h3>
+            <p>{stats.activeTickets || tickets.filter(t => t.status === 'OPEN').length}</p>
           </div>
         </div>
       </div>
 
       <div className="admin-tabs">
-        <button 
-          className={`tab-btn ${activeTab === 'tickets' ? 'active' : ''}`}
-          onClick={() => setActiveTab('tickets')}
-        >
-          Тикеты ({tickets.length})
-        </button>
         <button 
           className={`tab-btn ${activeTab === 'users' ? 'active' : ''}`}
           onClick={() => setActiveTab('users')}
@@ -315,69 +328,25 @@ const AdminPanel = () => {
         >
           Посты ({posts.length})
         </button>
+        <button 
+          className={`tab-btn ${activeTab === 'tickets' ? 'active' : ''}`}
+          onClick={() => setActiveTab('tickets')}
+        >
+          Тикеты ({tickets.length})
+        </button>
       </div>
 
       <div className="admin-content">
-        {/* Тикеты */}
-        {activeTab === 'tickets' && (
-          <div className="tickets-list">
-            {loading ? (
-              <div className="loading">Загрузка тикетов...</div>
-            ) : tickets.length === 0 ? (
-              <div className="no-data">Нет тикетов</div>
-            ) : (
-              tickets.map(ticket => (
-                <div key={ticket.id} className="ticket-item">
-                  <div className="ticket-info">
-                    <div className="ticket-header">
-                      <h3>#{ticket.id} - {ticket.subject}</h3>
-                      <div className="ticket-badges">
-                        {getStatusBadge(ticket.status)}
-                        {getPriorityBadge(ticket.priority)}
-                      </div>
-                    </div>
-                    <div className="ticket-meta">
-                      <span>👤 {ticket.user?.username || ticket.userId}</span>
-                      <span>📅 {new Date(ticket.createdAt).toLocaleDateString()}</span>
-                      <span>💬 {ticket._count?.messages || 0} сообщений</span>
-                    </div>
-                  </div>
-                  <div className="ticket-actions">
-                    <button 
-                      className="view-btn"
-                      onClick={() => openTicketChat(ticket.id)}
-                    >
-                      💬 Перейти в чат
-                    </button>
-                    {ticket.status === 'OPEN' ? (
-                      <button 
-                        className="complete-btn"
-                        onClick={() => updateTicketStatus(ticket.id, 'CLOSED')}
-                      >
-                        ✅ Закрыть тикет
-                      </button>
-                    ) : (
-                      <button 
-                        className="activate-btn"
-                        onClick={() => updateTicketStatus(ticket.id, 'OPEN')}
-                      >
-                        🔄 Открыть тикет
-                      </button>
-                    )}
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        )}
-
         {/* Пользователи */}
         {activeTab === 'users' && (
           <div className="users-table-container">
             {loading ? (
-              <div className="loading">Загрузка пользователей...</div>
+              <div className="loading">Загрузка пользователей из базы данных...</div>
             ) : users.length === 0 ? (
-              <div className="no-data">Нет пользователей</div>
+              <div className="no-data">
+                <p>Нет пользователей в базе данных</p>
+                <button onClick={loadUsers} className="refresh-btn">Обновить</button>
+              </div>
             ) : (
               <table className="admin-table">
                 <thead>
@@ -388,6 +357,7 @@ const AdminPanel = () => {
                     <th>Роль</th>
                     <th>Дата регистрации</th>
                     <th>Постов</th>
+                    <th>Тикетов</th>
                     <th>Действия</th>
                   </tr>
                 </thead>
@@ -395,11 +365,20 @@ const AdminPanel = () => {
                   {users.map(userItem => (
                     <tr key={userItem.id}>
                       <td>{userItem.id}</td>
-                      <td>{userItem.username}</td>
+                      <td>
+                        <div className="user-name-cell">
+                          {userItem.username}
+                        </div>
+                      </td>
                       <td>{userItem.email}</td>
-                      <td>{userItem.role === 'ADMIN' ? '👑 Админ' : '👤 Пользователь'}</td>
+                      <td>
+                        <span className={`role-badge ${userItem.role?.toLowerCase()}`}>
+                          {userItem.role === 'ADMIN' ? '👑 Админ' : '👤 Пользователь'}
+                        </span>
+                      </td>
                       <td>{new Date(userItem.createdAt).toLocaleDateString()}</td>
-                      <td>{userItem._count?.posts || 0}</td>
+                      <td>{userItem._count?.posts || userItem.posts?.length || 0}</td>
+                      <td>{userItem._count?.tickets || 0}</td>
                       <td>
                         {userItem.role !== 'ADMIN' && (
                           <button 
@@ -409,6 +388,9 @@ const AdminPanel = () => {
                           >
                             🗑️
                           </button>
+                        )}
+                        {userItem.role === 'ADMIN' && (
+                          <span className="admin-protected">🔒</span>
                         )}
                       </td>
                     </tr>
@@ -445,6 +427,62 @@ const AdminPanel = () => {
                     >
                       🗑️ Удалить
                     </button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        )}
+
+        {/* Тикеты */}
+        {activeTab === 'tickets' && (
+          <div className="tickets-list">
+            {loading ? (
+              <div className="loading">Загрузка тикетов...</div>
+            ) : tickets.length === 0 ? (
+              <div className="no-data">Нет тикетов</div>
+            ) : (
+              tickets.map(ticket => (
+                <div key={ticket.id} className="ticket-item">
+                  <div className="ticket-info">
+                    <div className="ticket-header">
+                      <h3>#{ticket.id} - {ticket.subject}</h3>
+                      <div className="ticket-badges">
+                        {getStatusBadge(ticket.status)}
+                        {getPriorityBadge(ticket.priority)}
+                      </div>
+                    </div>
+                    {ticket.description && (
+                      <p className="ticket-description">{ticket.description.substring(0, 100)}</p>
+                    )}
+                    <div className="ticket-meta">
+                      <span>👤 {ticket.author?.username || ticket.user?.username || ticket.userId}</span>
+                      <span>📅 {new Date(ticket.createdAt).toLocaleDateString()}</span>
+                      <span>💬 {ticket._count?.messages || ticket.messages?.length || 0} сообщений</span>
+                    </div>
+                  </div>
+                  <div className="ticket-actions">
+                    <button 
+                      className="view-btn"
+                      onClick={() => openTicketChat(ticket.id)}
+                    >
+                      💬 Перейти в чат
+                    </button>
+                    {ticket.status === 'OPEN' ? (
+                      <button 
+                        className="complete-btn"
+                        onClick={() => updateTicketStatus(ticket.id, 'CLOSED')}
+                      >
+                        ✅ Закрыть тикет
+                      </button>
+                    ) : (
+                      <button 
+                        className="activate-btn"
+                        onClick={() => updateTicketStatus(ticket.id, 'OPEN')}
+                      >
+                        🔄 Открыть тикет
+                      </button>
+                    )}
                   </div>
                 </div>
               ))

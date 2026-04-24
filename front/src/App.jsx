@@ -14,6 +14,7 @@ import AdminPanel from './components/Admin/AdminPanel';
 import SupportChat from './components/SupportChat/SupportChat'
 import UserTickets from './components/UserTickets/UserTickets';
 import './App.css';
+import UserList from './components/Users/UserList';
 
 const API_URL = 'http://localhost:3001';
 
@@ -115,6 +116,8 @@ const AppContent = () => {
             logout();
         }
     };
+
+// console.log('Current users in store:', );
 
     return (
         <Layout user={user} onLogout={handleLogout}>

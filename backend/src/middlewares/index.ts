@@ -10,7 +10,7 @@ export interface AuthRequest extends Request {
     user?: User;
 }
 
-const authenticateToken = (req: Request, res: Response, next: Function) => {
+export const authenticateToken = (req: Request, res: Response, next: Function) => {
     const cookieToken = req.cookies?.ref_token;
     const authHeader = req.headers['authorization'];
     const headerToken = authHeader && authHeader.split(' ')[1];
@@ -39,6 +39,18 @@ console.log(token);
         next();
     });
 
+};
+
+export const requireAdmin = (
+  req: AuthRequest,
+  res: Response,
+  next: Function
+): void => {
+  if (!req.user || req.user.role !== 'ADMIN') {
+    res.status(403).json({ error: 'Доступ запрещен. Требуются права администратора' });
+    return;
+  }
+  next();
 };
 
 export default authenticateToken;

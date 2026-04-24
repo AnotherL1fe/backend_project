@@ -1,77 +1,75 @@
-import React from 'react';
-import { useParams, Routes, Route, Navigate, Link } from 'react-router-dom';
-import { useUserPostsLoader } from '../hooks/useDataLoader.js';
-import useDataStore from '../store/dataStore.js';
-import UserPosts from '../components/Posts/UserPosts.jsx';
-import Spinner from '../components/UI/Spinner.jsx';
+// pages/UserDetailPage.jsx
+import React, { useEffect } from 'react';
+import { useParams, Link, useNavigate } from 'react-router-dom';
+import useDataStore from '../store/dataStore';
+import useAuthStore from '../store/authStore';
+import Spinner from '../components/UI/Spinner';
 import './UserDetailPage.css';
 
 const UserDetailPage = () => {
   const { id } = useParams();
-  useUserPostsLoader(id);
+  const navigate = useNavigate();
+  const { token, user: currentUser } = useAuthStore();
   
-  const user = useDataStore((state) => state.getUserById(id));
+  // Получаем данные из стора
+  const users = useDataStore((state) => state.users);
   const isLoading = useDataStore((state) => state.isLoading);
+  const fetchUsers = useDataStore((state) => state.fetchUsers);
+  const getUserById = useDataStore((state) => state.getUserById);
   
+  // Получаем пользователя по ID
+  const user = getUserById(id);
+  
+  useEffect(() => {
+    // Если пользователи еще не загружены, загружаем их
+    if (token && (!users || users.length === 0)) {
+      fetchUsers(token);
+    }
+  }, [token, users]);
+
+  console.log('UserDetailPage:', { id, user, users, isLoading });
+
   if (isLoading && !user) {
     return <Spinner />;
   }
-  
+
   if (!user) {
     return (
       <div className="user-not-found">
-        <h2>User not found</h2>
-        <Link to="/" className="back-link">← Back to users</Link>
+        <h2>Пользователь не найден</h2>
+        <p>Пользователь с ID {id} не существует</p>
+        <Link to="/users">← Вернуться к списку</Link>
       </div>
     );
   }
-  
+
   return (
     <div className="user-detail-page">
-      <Link to="/" className="back-link">← Back to users</Link>
+      <Link to="/users" className="back-link-post">← Назад к пользователям</Link>
       
       <div className="user-profile">
         <div className="profile-header">
           <div className="profile-avatar">
-            <span>{user.name.charAt(0)}</span>
+            <span>{user.username?.charAt(0) || '?'}</span>
           </div>
           <div className="profile-info">
-            <h2 className="profile-name">{user.name}</h2>
-            <p className="profile-username">@{user.username}</p>
+            <h2>{user.username}</h2>
+            <p>📧 {user.email}</p>
+            <p>👑 Роль: {user.role}</p>
+            <p>📅 Зарегистрирован: {new Date(user.createdAt).toLocaleDateString()}</p>
           </div>
         </div>
         
-        <div className="profile-details">
-          <div className="detail-card">
-            <h4>Contact Information</h4>
-            <p><strong>Email:</strong> {user.email}</p>
-            <p><strong>Phone:</strong> {user.phone}</p>
-            <p><strong>Website:</strong> 
-              <a href={`http://${user.website}`} target="_blank" rel="noopener noreferrer">
-                {user.website}
-              </a>
-            </p>
+        <div className="user-stats">
+          <div className="stat-card">
+            <div className="stat-value">{user._count?.posts || 0}</div>
+            <div className="stat-label">Постов</div>
           </div>
-          
-          <div className="detail-card">
-            <h4>Address</h4>
-            <p>{user.address?.street}, {user.address?.suite}</p>
-            <p>{user.address?.city}, {user.address?.zipcode}</p>
-          </div>
-          
-          <div className="detail-card">
-            <h4>Company</h4>
-            <p><strong>{user.company?.name}</strong></p>
-            <p>{user.company?.catchPhrase}</p>
-            <p><em>{user.company?.bs}</em></p>
+          <div className="stat-card">
+            <div className="stat-value">{user._count?.tickets || 0}</div>
+            <div className="stat-label">Тикетов</div>
           </div>
         </div>
-        
-        {/* Добавьте вложенные маршруты для UserDetailPage */}
-        <Routes>
-          <Route path="/" element={<UserPosts userId={id} />} />
-          <Route path="/add-post" element={<addPostPage />} />
-        </Routes>
       </div>
     </div>
   );
