@@ -6,7 +6,7 @@ import './AdminPanel.css';
 const AdminPanel = () => {
   const { user, token } = useAuthStore();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('users'); // По умолчанию показываем пользователей
+  const [activeTab, setActiveTab] = useState('users');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState({ text: '', type: '' });
   
@@ -73,18 +73,17 @@ const AdminPanel = () => {
         const data = await response.json();
         setStats(data);
         console.log('Stats loaded:', data);
-      } else {
-        console.error('Failed to load stats:', response.status);
       }
     } catch (error) {
       console.error('Error loading stats:', error);
     }
   };
 
+  // ИСПРАВЛЕНО: правильный эндпоинт для пользователей
   const loadUsers = async () => {
     try {
       console.log('Loading users from database...');
-      const response = await fetch(`${backendUrl}/api/admin`, {
+      const response = await fetch(`${backendUrl}/api/admin/users`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -95,7 +94,7 @@ const AdminPanel = () => {
       
       if (response.ok) {
         const data = await response.json();
-        // Обрабатываем ответ в зависимости от формата
+        // Обрабатываем ответ - может быть { users: [...] } или просто массив
         const usersData = data.users || data;
         setUsers(usersData);
         console.log('Users loaded:', usersData.length);
@@ -112,9 +111,10 @@ const AdminPanel = () => {
     }
   };
 
+  // ИСПРАВЛЕНО: правильный эндпоинт для тикетов
   const loadTickets = async () => {
     try {
-      const response = await fetch(`${backendUrl}/api/admin`, {
+      const response = await fetch(`${backendUrl}/api/admin/tickets`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -138,9 +138,10 @@ const AdminPanel = () => {
     }
   };
 
+  // ИСПРАВЛЕНО: правильный эндпоинт для постов
   const loadPosts = async () => {
     try {
-      const response = await fetch(`${backendUrl}/api/admin`, {
+      const response = await fetch(`${backendUrl}/api/admin/posts`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -365,11 +366,7 @@ const AdminPanel = () => {
                   {users.map(userItem => (
                     <tr key={userItem.id}>
                       <td>{userItem.id}</td>
-                      <td>
-                        <div className="user-name-cell">
-                          {userItem.username}
-                        </div>
-                      </td>
+                      <td>{userItem.username}</td>
                       <td>{userItem.email}</td>
                       <td>
                         <span className={`role-badge ${userItem.role?.toLowerCase()}`}>
@@ -377,7 +374,7 @@ const AdminPanel = () => {
                         </span>
                       </td>
                       <td>{new Date(userItem.createdAt).toLocaleDateString()}</td>
-                      <td>{userItem._count?.posts || userItem.posts?.length || 0}</td>
+                      <td>{userItem._count?.posts || 0}</td>
                       <td>{userItem._count?.tickets || 0}</td>
                       <td>
                         {userItem.role !== 'ADMIN' && (
@@ -390,7 +387,7 @@ const AdminPanel = () => {
                           </button>
                         )}
                         {userItem.role === 'ADMIN' && (
-                          <span className="admin-protected">🔒</span>
+                          <span className="admin-protected" title="Администратора нельзя удалить">🔒</span>
                         )}
                       </td>
                     </tr>
@@ -458,7 +455,7 @@ const AdminPanel = () => {
                     <div className="ticket-meta">
                       <span>👤 {ticket.author?.username || ticket.user?.username || ticket.userId}</span>
                       <span>📅 {new Date(ticket.createdAt).toLocaleDateString()}</span>
-                      <span>💬 {ticket._count?.messages || ticket.messages?.length || 0} сообщений</span>
+                      <span>💬 {ticket._count?.messages || 0} сообщений</span>
                     </div>
                   </div>
                   <div className="ticket-actions">

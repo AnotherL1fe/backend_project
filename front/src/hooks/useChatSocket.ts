@@ -72,7 +72,7 @@ export function useChatSocket(backendUrl: string) {
         socket.emit('chat:join', payload, onJoinAck)
       })
 
-      socket.on('connect_error', (e) => {
+      socket.on('connect:error', (e) => {
         setStatus('error')
         setError(e instanceof Error ? e.message : 'Ошибка подключения')
       })
@@ -82,6 +82,8 @@ export function useChatSocket(backendUrl: string) {
       })
 
       socket.on('chat:history', (history: ChatMessage[]) => {
+        console.log(history);
+        
         setMessages(history)
       })
 
@@ -104,6 +106,8 @@ export function useChatSocket(backendUrl: string) {
         'chat:message',
         { room, text },
         (ack: ChatSendAck) => {
+          console.log(ack);
+          
           if (!ack.ok) {
             setStatus('error')
             setError(ack.error)

@@ -1,22 +1,23 @@
 import { Server, Socket } from 'socket.io';
 import { PrismaClient } from '@prisma/client';
-import { JoinChatData } from './chatTypes';
+import { ChatJoinAck, ChatMessage, JoinChatData } from './chatTypes';
 import { SendMessageData } from './chatTypes';
 
 const prisma = new PrismaClient();
 
 export const registerChatHandlers = (io: Server) => {
-  io.on('connection', (socket: Socket) => {
-    console.log(`User connected: ${socket.id}`);
+  io.on('connect', (socket: Socket) => {
+    // console.log(`User connected: ${socket.id}`);
     
     let currentRoom: string | null = null;
 
     // Подключение к комнате тикета
-    socket.on('join_chat', async (data: JoinChatData) => {
+    socket.on('chat:join', async (data: JoinChatData, callback: (ack: ChatJoinAck)=> void) => {
       const { room, nickname, userId } = data;
       
       if (!room || !nickname) {
-        socket.emit('error', 'Не указана комната или никнейм');
+        callback({ok: false, error: 'Не указана комната или никнейм'})
+        // socket.emit('connect:error', );
         return;
       }
       
@@ -52,25 +53,28 @@ export const registerChatHandlers = (io: Server) => {
           kind: 'message'
         }));
         
-        socket.emit('chat_history', history);
+        socket.emit('chat:history', history);
       }
       
-      socket.to(room).emit('system_message', {
+      socket.to(room).emit('system:message', {
         text: `${nickname} присоединился к чату`,
         timestamp: new Date()
       });
       
-      socket.emit('connected', { room, nickname });
-      console.log("WEBSOCKET CONCTED ");
+      callback({ok: true})
+      // socket.emit('connect', { room, nickname });
+      // console.log("WEBSOCKET CONCTED ");
       
     });
 
     // Отправка сообщения
-    socket.on('send_message', async (data: SendMessageData) => {
+    socket.on('chat:message', async (data: SendMessageData, callback: (ack: ChatJoinAck)=> void) => {
       const { text, room, nickname, userId } = data;
-      
+        console.log(text);
+        
       if (!text || !room || !nickname) {
-        socket.emit('error', 'Неверные данные');
+        callback({ok: false, error: 'Неверные данные'})
+        // socket.emit('error', 'Неверные данные');
         return;
       }
       
@@ -93,7 +97,7 @@ export const registerChatHandlers = (io: Server) => {
         });
       }
       
-      io.to(room).emit('new_message', {
+      io.to(room).emit('chat:message', {
         id: savedMessage?.id || Date.now(),
         text: text,
         author: nickname,
@@ -116,7 +120,7 @@ export const registerChatHandlers = (io: Server) => {
     // Отключение
     socket.on('disconnect', () => {
       if (currentRoom) {
-        io.to(currentRoom).emit('system_message', {
+        io.to(currentRoom).emit('system:message', {
           text: `Пользователь покинул чат`,
           timestamp: new Date()
         });

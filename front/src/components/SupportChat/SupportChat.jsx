@@ -101,7 +101,8 @@ const SupportChat = () => {
     }
   }, [messages.length]);
 
-  const handleSend = useCallback(() => {
+  const handleSend = useCallback((e) => {
+    e.preventDefault();
     const payload = text.trim();
     if (!payload || !connected || !room) return;
 
