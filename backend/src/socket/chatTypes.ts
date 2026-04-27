@@ -51,8 +51,8 @@ export interface SocketChatData {
 
 export interface SendMessageData {
   text: string;
+  //Заменить на tiketId
   room: string;
-  nickname: string;
   userId: number;
 }
 

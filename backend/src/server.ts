@@ -20,7 +20,7 @@ const io = new SocketServer(server, {
   },
   transports: ['websocket', 'polling']
 });
-
+// io.use()
 registerChatHandlers(io);
 
 app.use(express.json());

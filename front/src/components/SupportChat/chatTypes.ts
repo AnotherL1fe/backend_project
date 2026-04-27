@@ -1,4 +1,4 @@
-export type ChatMessageKind = 'user' | 'system'
+export type ChatMessageKind = 'user' | 'system' | 'message'
 
 export type ChatRoomName = string
 export type ChatNickname = string

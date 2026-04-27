@@ -38,14 +38,14 @@ const UserDetailPage = () => {
       <div className="user-not-found">
         <h2>Пользователь не найден</h2>
         <p>Пользователь с ID {id} не существует</p>
-        <Link to="/users">← Вернуться к списку</Link>
+        <Link to="/">← Вернуться к списку</Link>
       </div>
     );
   }
 
   return (
     <div className="user-detail-page">
-      <Link to="/users" className="back-link-post">← Назад к пользователям</Link>
+      <Link to="/" className="back-link-post">← Назад к пользователям</Link>
       
       <div className="user-profile">
         <div className="profile-header">

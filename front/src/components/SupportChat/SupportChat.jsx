@@ -1,4 +1,4 @@
-// SupportChat.jsx
+// front/src/components/SupportChat/SupportChat.jsx
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import useAuthStore from '../../store/authStore';
@@ -7,25 +7,14 @@ import './SupportChat.css';
 
 const SupportChat = () => {
   const { ticketId } = useParams();
-  const { user } = useAuthStore();
+  const { user, isAuthenticated } = useAuthStore();
   const navigate = useNavigate();
-  const isAdmin = user?.role === 'ADMIN' || user?.email === '';
+  const isAdmin = user?.role === 'ADMIN';
 
   const backendUrl = 'http://localhost:3001';
   const hasConnectedRef = useRef(false);
+  const componentMounted = useRef(true);
 
-  // Проверка наличия ticketId и редирект
-  useEffect(() => {
-    if (!ticketId) {
-      if (isAdmin) {
-        navigate('/admin/tickets');
-      } else {
-        navigate('/tickets');
-      }
-    }
-  }, [ticketId, isAdmin, navigate]);
-
-  // Генерируем комнату только если есть ticketId
   const room = useMemo(() => {
     if (ticketId) {
       return `ticket_${ticketId}`;
@@ -36,57 +25,108 @@ const SupportChat = () => {
   const nickname = user?.username || 'user';
   const [text, setText] = useState('');
   const [ticketInfo, setTicketInfo] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  const { status, error, messages, connect, disconnect, sendMessage } = useChatSocket(backendUrl);
+  const { status, error, messages, connect, disconnect, sendMessage, isConnected } = useChatSocket(backendUrl);
 
   const messagesEndRef = useRef(null);
-
   const connected = status === 'connected';
   const connecting = status === 'connecting';
 
+  // Редирект если нет ticketId
+  useEffect(() => {
+    if (!ticketId) {
+      navigate(isAdmin ? '/admin/tickets' : '/tickets');
+    }
+  }, [ticketId, isAdmin, navigate]);
+
   // Загрузка информации о тикете
   useEffect(() => {
-    if (ticketId) {
-      fetchTicketInfo();
-    }
-  }, [ticketId]);
+    if (!ticketId) return;
 
-  const fetchTicketInfo = async () => {
-    try {
-      const response = await fetch(`${backendUrl}/api/tickets/${ticketId}`, {
-        credentials: "include",
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+    const fetchTicketInfo = async () => {
+      try {
+        const response = await fetch(`${backendUrl}/api/tickets/${ticketId}`, {
+          credentials: "include",
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        });
+        if (response.ok) {
+          const data = await response.json();
+          if (componentMounted.current) {
+            setTicketInfo(data);
+          }
         }
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setTicketInfo(data);
+      } catch (error) {
+        console.error('Error fetching ticket info:', error);
+      } finally {
+        if (componentMounted.current) {
+          setLoading(false);
+        }
       }
-    } catch (error) {
-      console.error('Error fetching ticket info:', error);
-    }
-  };
+    };
 
-  // Автоподключение при загрузке - только один раз
+    fetchTicketInfo();
+  }, [ticketId, backendUrl]);
+
+useEffect(() => {
+  // Отладка - проверяем все места где может быть токен
+  const localToken = localStorage.getItem('token');
+  const localAuthToken = localStorage.getItem('auth-token');
+  const cookieToken = document.cookie.split('; ').find(row => row.startsWith('ref_token='))?.split('=')[1];
+  
+  console.log('🔍 Token check:', {
+    localStorage_token: localToken,
+    localStorage_auth_token: localAuthToken,
+    cookie_ref_token: cookieToken,
+    user: user,
+    isAuthenticated: isAuthenticated
+  });
+  
+  if (!user || !room || connected || connecting || hasConnectedRef.current || loading) {
+    return;
+  }
+
+  // Проверяем наличие токена
+  const token = localToken || localAuthToken;
+  if (!token) {
+    console.error('❌ No token found, cannot connect');
+    return;
+  }
+
+  console.log('✅ Token found, auto-connecting...');
+  hasConnectedRef.current = true;
+  connect({ room: room.trim(), nickname, userId: user.id });
+}, [user, room, nickname, connect, connected, connecting, ticketId, loading, isAuthenticated]);
+
+  // Автоподключение - только один раз!
   useEffect(() => {
-    if (!user || !room || connected || connecting || hasConnectedRef.current) {
+    // Ждем загрузки всех данных
+    if (loading || !room || !user || !isAuthenticated) {
       return;
     }
 
-    console.log('Auto-connecting to ticket chat:', { 
-      room: room.trim(), 
+    // Уже подключены или подключаемся
+    if (connected || connecting || hasConnectedRef.current) {
+      return;
+    }
+
+    console.log('Auto-connecting to ticket chat:', {
+      room: room.trim(),
       nickname,
-      ticketId 
+      ticketId
     });
-    
+
     hasConnectedRef.current = true;
-    connect({ room: room.trim(), nickname });
-  }, [user, room, nickname, connect, connected, connecting, ticketId]);
+    connect({ room: room.trim(), nickname, userId: user.id });
+  }, [user, room, nickname, connect, connected, connecting, ticketId, loading, isAuthenticated]);
 
   // Отключаемся при размонтировании
   useEffect(() => {
+    componentMounted.current = true;
     return () => {
+      componentMounted.current = false;
       if (connected) {
         disconnect();
       }
@@ -101,32 +141,45 @@ const SupportChat = () => {
     }
   }, [messages.length]);
 
-  const handleSend = useCallback((e) => {
-    e.preventDefault();
+ const handleSend = useCallback((e) => {
+    // Предотвращаем перезагрузку страницы
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    
     const payload = text.trim();
-    if (!payload || !connected || !room) return;
+    if (!payload || !connected || !room) {
+      console.log('Cannot send:', { payload, connected, room });
+      return;
+    }
 
+    console.log('Sending message:', payload);
     sendMessage(payload);
     setText('');
   }, [text, connected, sendMessage, room]);
+
+  // Исправленный handleKeyDown
+  const handleKeyDown = useCallback((e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault(); // 👈 КЛЮЧЕВОЕ: предотвращаем дефолтное поведение
+      e.stopPropagation();
+      handleSend();
+    }
+  }, [handleSend]);
+
 
   const handleBack = useCallback(() => {
     if (connected) {
       disconnect();
     }
-    if (isAdmin) {
-      navigate('/admin/tickets');
-    } else {
-      navigate('/tickets');
-    }
+    navigate(isAdmin ? '/admin/tickets' : '/tickets');
   }, [connected, disconnect, isAdmin, navigate]);
 
-  const handleKeyDown = useCallback((e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSend();
-    }
-  }, [handleSend]);
+  const handleReconnect = useCallback(() => {
+    hasConnectedRef.current = false;
+    connect({ room: room.trim(), nickname, userId: user?.id });
+  }, [connect, room, nickname, user?.id]);
 
   const formatTime = (timestamp) => {
     if (!timestamp) return '';
@@ -136,8 +189,8 @@ const SupportChat = () => {
     });
   };
 
-  // Показываем загрузку, если нет ticketId
-  if (!ticketId || !room) {
+  // Показываем загрузку
+  if (loading || !ticketId || !room) {
     return (
       <div className="support-chat">
         <div className="chat-header">
@@ -150,7 +203,7 @@ const SupportChat = () => {
         </div>
         <div className="chat-panel">
           <div className="loading-message">
-            Перенаправление...
+            Загрузка...
           </div>
         </div>
       </div>
@@ -187,8 +240,8 @@ const SupportChat = () => {
         <div className="chat-messages">
           {messages.length === 0 ? (
             <div className="no-messages">
-              {connected 
-                ? 'Чат готов к работе. Опишите вашу проблему.' 
+              {connected
+                ? 'Чат готов к работе. Опишите вашу проблему.'
                 : 'Подключение к чату...'}
             </div>
           ) : (
@@ -214,47 +267,10 @@ const SupportChat = () => {
         </div>
 
         <div className="chat-composer">
-          {!connected && !connecting && (
-            <div className="connection-controls">
-              <div className="connect-form">
-                <div className="connect-field">
-                  <label>Статус подключения</label>
-                  <div className="connection-status">
-                    {error ? 'Ошибка подключения' : 'Ожидание подключения...'}
-                  </div>
-                </div>
-                {error && (
-                  <button
-                    className="connect-btn"
-                    onClick={() => {
-                      hasConnectedRef.current = false;
-                      connect({ room: room.trim(), nickname });
-                    }}
-                  >
-                    Попробовать снова
-                  </button>
-                )}
-              </div>
-            </div>
-          )}
-
-          {connecting && (
-            <div className="connecting-message">
-              <div className="spinner-small"></div>
-              <span>Подключение к чату...</span>
-            </div>
-          )}
-
           {error && !connecting && (
             <div className="error-message">
               ❌ {error}
-              <button 
-                onClick={() => {
-                  hasConnectedRef.current = false;
-                  connect({ room: room.trim(), nickname });
-                }} 
-                className="retry-btn"
-              >
+              <button onClick={handleReconnect} className="retry-btn">
                 Попробовать снова
               </button>
             </div>
@@ -267,7 +283,12 @@ const SupportChat = () => {
                 onChange={(e) => setText(e.target.value)}
                 placeholder="Введите сообщение..."
                 rows={3}
-                onKeyDown={handleKeyDown}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSend();
+                  }
+                }}
               />
               <button
                 className="send-btn"
@@ -283,31 +304,6 @@ const SupportChat = () => {
             <div className="chat-closed">
               <div className="closed-message">
                 🔒 Тикет закрыт. Новые сообщения нельзя отправить.
-                {isAdmin && (
-                  <button
-                    className="reopen-btn"
-                    onClick={async () => {
-                      try {
-                        const response = await fetch(`${backendUrl}/api/tickets/${ticketId}/status`, {
-                          method: 'PATCH',
-                          credentials: 'include',
-                          headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${localStorage.getItem('token')}`
-                          },
-                          body: JSON.stringify({ status: 'OPEN' })
-                        });
-                        if (response.ok) {
-                          window.location.reload();
-                        }
-                      } catch (error) {
-                        console.error('Error reopening ticket:', error);
-                      }
-                    }}
-                  >
-                    Открыть тикет
-                  </button>
-                )}
               </div>
             </div>
           )}
